@@ -20,6 +20,13 @@ export interface RequestUser {
   platform: string;
 }
 
+export interface RequestAdmin {
+  adminId: string;
+  adminRole: string;
+}
+
 export type ECoreReqHeader = ECoreReq & CustomHeaders;
 
 export type ECoreReqUser = ECoreReq & RequestUser & CustomHeaders;
+
+export type ECoreReqAdmin = ECoreReq & RequestAdmin & CustomHeaders;

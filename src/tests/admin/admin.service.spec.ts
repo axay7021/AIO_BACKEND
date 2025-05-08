@@ -10,12 +10,11 @@ import {
   NotFoundException,
   UnauthorizedException,
 } from '@nestjs/common';
-import { ECoreReq, RequestUser } from '@common/interfaces/request.interface';
+import { ECoreReq, ECoreReqAdmin, RequestUser } from '@common/interfaces/request.interface';
 import { CreateAdminDto } from '../../app/admin/dto/signup.dto';
 import { EmailService } from '@common/services/email.service';
 import { TokenUtils } from '@common/services/jwt.service';
 import { CloudinaryService } from '@common/services/clodinary.service';
-import { GoogleSignupDto } from '@app/admin/dto/googleSignup.dto';
 import { JwtService } from '@nestjs/jwt';
 import { VerifyOtpDto } from '@app/admin/dto/otpVerify.dto';
 import { HttpStatus } from '@common/constants/httpStatus.constant';
@@ -152,7 +151,7 @@ describe('AdminService', () => {
     expect(adminService).toBeDefined();
   });
 
-  describe('signup', () => {
+  describe('createAdmin', () => {
     const mockRequest: Partial<ECoreReq> = {
       ip: '127.0.0.1',
     };
@@ -189,15 +188,15 @@ describe('AdminService', () => {
 
       // Expect the signup to throw HttpException with status 402
       await expect(
-        adminService.signup(mockRequest as ECoreReq, mockCreateAdminDto),
+        adminService.createAdmin(mockRequest as ECoreReqAdmin, mockCreateAdminDto)
       ).rejects.toThrow(
         new HttpException(
           {
             message: 'EMAIL_ALREADY_EXISTS',
             statusCode: 402,
           },
-          402,
-        ),
+          402
+        )
       );
 
       // Verify the findUnique call
@@ -211,7 +210,7 @@ describe('AdminService', () => {
       // Verify blocking guards were called
       expect(ipBlockingGuard.trackFailedAttempt).toHaveBeenCalledWith(mockRequest.ip);
       expect(emailBlockingGuard.trackFailedAttempt).toHaveBeenCalledWith(
-        mockCreateAdminDto.email.trim().toLowerCase(),
+        mockCreateAdminDto.email.trim().toLowerCase()
       );
     });
 
@@ -246,7 +245,10 @@ describe('AdminService', () => {
       // jest.spyOn(emailService, 'sendOtpToMail').mockResolvedValueOnce(true);
 
       // Execute signup
-      const result = await adminService.signup(mockRequest as ECoreReq, mockCreateAdminDto);
+      const result = await adminService.createAdmin(
+        mockRequest as ECoreReqAdmin,
+        mockCreateAdminDto
+      );
 
       // Verify email check
       expect(prismaService.user.findUnique).toHaveBeenCalledWith({
@@ -273,326 +275,6 @@ describe('AdminService', () => {
         email: mockCreateAdminDto.email.trim().toLowerCase(),
         otp: expect.any(String),
       });
-    });
-  });
-
-  describe('google/signup', () => {
-    const mockRequest: Partial<ECoreReq> = {
-      ip: '127.0.0.1',
-    };
-
-    const mockGoogleSignup: GoogleSignupDto = {
-      token: expect.any(String),
-    };
-
-    const mockGooglePayload = {
-      email: 'test@example.com',
-      email_verified: true,
-      given_name: 'John',
-      family_name: 'Doe',
-      sub: 'google123',
-    };
-
-    it('should create a new user when user does not exist', async () => {
-      // Arrange
-      adminService.verifyGoogleToken = jest.fn().mockResolvedValue(mockGooglePayload);
-      prismaService.user.findUnique = jest.fn().mockResolvedValue(null);
-      prismaService.user.create = jest.fn().mockResolvedValue({
-        id: expect.any(String),
-        email: mockGooglePayload.email,
-        firstName: mockGooglePayload.given_name,
-        lastName: mockGooglePayload.family_name,
-      });
-
-      jwtService.generateToken = jest.fn().mockResolvedValue('mock-jwt-token');
-      // Act
-      const result = await adminService.googleSignup(mockGoogleSignup);
-
-      // Assert
-      expect(adminService.verifyGoogleToken).toHaveBeenCalledWith(mockGoogleSignup.token);
-      expect(prismaService.user.create).toHaveBeenCalledWith({
-        data: {
-          email: mockGooglePayload.email,
-          firstName: mockGooglePayload.given_name,
-          lastName: mockGooglePayload.family_name,
-          googleId: mockGooglePayload.sub,
-          authProvider: 'GOOGLE',
-          emailVerified: mockGooglePayload.email_verified,
-        },
-      });
-      expect(result).toEqual({
-        token: 'mock-jwt-token',
-        email: mockGooglePayload.email,
-        firstName: mockGooglePayload.given_name,
-        lastName: mockGooglePayload.family_name,
-      });
-    });
-
-    it('should throw exception when user exists but has no organization', async () => {
-      // Arrange
-      const existingUser = {
-        id: expect.any(String),
-        email: mockGooglePayload.email,
-        authProvider: 'EMAIL',
-        googleId: null,
-        emailVerified: false,
-        firstName: 'John',
-        lastName: 'Doe',
-        organizationMembers: [], // Empty array indicates no organizations
-      };
-
-      const errorToThrow = new HttpException(
-        {
-          message: 'USER_NOT_ASSOCIATED_WITH_ANY_ORGANIZATION',
-          statusCode: 203,
-          data: {
-            token: 'mock-token',
-          },
-        },
-        203,
-      );
-
-      adminService.verifyGoogleToken = jest.fn().mockResolvedValue(mockGooglePayload);
-      prismaService.user.findUnique = jest.fn().mockResolvedValue(existingUser);
-      prismaService.user.update = jest.fn().mockResolvedValue(existingUser);
-
-      // Mock validateUserStatus to throw the expected error
-      adminService.validateUserStatus = jest.fn().mockImplementation(() => {
-        throw errorToThrow;
-      });
-
-      jwtService.generateToken = jest.fn().mockResolvedValue('mock-token');
-
-      // Act & Assert
-      await expect(adminService.googleSignup(mockGoogleSignup)).rejects.toThrow(errorToThrow);
-
-      // Verify Google ID and email verification were updated
-      expect(prismaService.user.update).toHaveBeenCalledWith({
-        where: { id: existingUser.id },
-        data: {
-          googleId: mockGooglePayload.sub,
-          emailVerified: true,
-        },
-      });
-
-      // Verify validateUserStatus was called
-      expect(adminService.validateUserStatus).toHaveBeenCalledWith(existingUser.id);
-    });
-
-    it('should throw exception when user exists with organization but no plan', async () => {
-      // Arrange
-      const existingUser = {
-        id: expect.any(String),
-        email: mockGooglePayload.email,
-        authProvider: 'EMAIL',
-        googleId: null,
-        emailVerified: false,
-        firstName: 'John',
-        lastName: 'Doe',
-        phoneNumber: '1234567890', // Complete profile
-        organizationMembers: [
-          {
-            organization: {
-              id: 1,
-              isActive: true,
-              subscription: null, // No subscription plan
-            },
-          },
-        ],
-      };
-
-      const errorToThrow = new HttpException(
-        {
-          message: 'USER_NOT_TAKEN_ANY_PLAN',
-          statusCode: 206,
-          data: {
-            organizationId: 1,
-            token: 'mock-token',
-          },
-        },
-        206,
-      );
-
-      adminService.verifyGoogleToken = jest.fn().mockResolvedValue(mockGooglePayload);
-      prismaService.user.findUnique = jest.fn().mockResolvedValue(existingUser);
-      prismaService.user.update = jest.fn().mockResolvedValue(existingUser);
-
-      // Mock validateUserStatus to throw the expected error
-      adminService.validateUserStatus = jest.fn().mockImplementation(() => {
-        throw errorToThrow;
-      });
-
-      jwtService.generateToken = jest.fn().mockResolvedValue('mock-token');
-
-      // Act & Assert
-      await expect(adminService.googleSignup(mockGoogleSignup)).rejects.toThrow(errorToThrow);
-
-      // Verify Google ID and email verification were updated
-      expect(prismaService.user.update).toHaveBeenCalledWith({
-        where: { id: existingUser.id },
-        data: {
-          googleId: mockGooglePayload.sub,
-          emailVerified: true,
-        },
-      });
-    });
-
-    it('should return subdomain token when user already exists with organization and subscription', async () => {
-      // Arrange
-      const existingUser = {
-        id: 'user-id',
-        email: mockGooglePayload.email,
-        authProvider: 'EMAIL',
-        googleId: null,
-        emailVerified: false,
-        firstName: 'John',
-        lastName: 'Doe',
-        password: null,
-        organizationMembers: [
-          {
-            organization: {
-              id: 'org-id',
-              isActive: true,
-              subscription: { id: 1 }, // Has subscription
-              name: 'Test Organization',
-              subdomain: 'test-org',
-            },
-          },
-        ],
-      };
-
-      // Mock the verifyGoogleToken method
-      adminService.verifyGoogleToken = jest.fn().mockResolvedValue(mockGooglePayload);
-
-      // Mock the user.findUnique method to return the existing user
-      prismaService.user.findUnique = jest.fn().mockResolvedValue(existingUser);
-
-      // Mock the user.update method
-      prismaService.user.update = jest.fn().mockResolvedValue({
-        ...existingUser,
-        googleId: mockGooglePayload.sub,
-        emailVerified: true,
-      });
-
-      // Mock the validateUserStatus method
-      adminService.validateUserStatus = jest.fn().mockResolvedValue(true);
-
-      // Mock getDefaultOrganization
-      const mockOrgMember = {
-        organization: {
-          id: 'org-id',
-          name: 'Test Organization',
-          subdomain: 'test-org',
-          subscription: {
-            plan: {
-              id: 'plan-id',
-            },
-          },
-        },
-      };
-      adminService.getDefaultOrganization = jest.fn().mockResolvedValue(mockOrgMember);
-
-      // Mock the organizationMember.update method
-      prismaService.organizationMember.update = jest.fn().mockImplementation(({ data }) => ({
-        userId: existingUser.id,
-        organizationId: mockOrgMember.organization.id,
-        accessTokenCRMId: null,
-        refreshTokenCRMId: data.refreshTokenCRMId,
-      }));
-
-      // Mock the JWT subdomain token generation
-      const mockSubdomainToken = 'mock-subdomain-token';
-      jwtService.generateSubdomainToken = jest.fn().mockResolvedValue(mockSubdomainToken);
-
-      // Act
-      const result = await adminService.googleSignup(mockGoogleSignup);
-
-      // Assert
-      expect(result).toEqual({
-        subdomainToken: expect.any(String),
-        organizationSubdomain: 'test-org',
-      });
-
-      // Verify Google token verification
-      expect(adminService.verifyGoogleToken).toHaveBeenCalledWith(mockGoogleSignup.token);
-
-      // Verify user update with Google ID and email verification
-      expect(prismaService.user.update).toHaveBeenCalledWith({
-        where: { id: existingUser.id },
-        data: {
-          googleId: mockGooglePayload.sub,
-          emailVerified: true,
-        },
-      });
-
-      // Verify organization member update - use toHaveBeenCalledWith instead of accessing mock.calls
-      expect(prismaService.organizationMember.update).toHaveBeenCalledWith({
-        where: {
-          userId_organizationId: {
-            userId: existingUser.id,
-            organizationId: mockOrgMember.organization.id,
-          },
-        },
-        data: {
-          accessTokenCRMId: null,
-          refreshTokenCRMId: expect.any(String),
-        },
-      });
-
-      // Verify subdomain token generation - use toHaveBeenCalledWith instead of accessing mock.calls
-      expect(jwtService.generateSubdomainToken).toHaveBeenCalledWith(
-        existingUser.id,
-        mockOrgMember.organization.id,
-        expect.any(String),
-      );
-    });
-
-    it('should throw exception when google token is expired', async () => {
-      // Arrange
-      adminService.verifyGoogleToken = jest
-        .fn()
-        .mockRejectedValue(new UnauthorizedException('GOOGLE_TOKEN_EXPIRED'));
-
-      // Act & Assert
-      await expect(adminService.googleSignup(mockGoogleSignup)).rejects.toThrow(
-        new UnauthorizedException('GOOGLE_TOKEN_EXPIRED'),
-      );
-    });
-
-    it('should throw exception when google token is invalid', async () => {
-      // Arrange
-      adminService.verifyGoogleToken = jest
-        .fn()
-        .mockRejectedValue(new UnauthorizedException('INVALID_GOOGLE_TOKEN'));
-
-      // Act & Assert
-      await expect(adminService.googleSignup(mockGoogleSignup)).rejects.toThrow(
-        new UnauthorizedException('INVALID_GOOGLE_TOKEN'),
-      );
-    });
-
-    it('should throw exception when google token is malformed', async () => {
-      // Arrange
-      adminService.verifyGoogleToken = jest
-        .fn()
-        .mockRejectedValue(new UnauthorizedException('GOOGLE_TOKEN_MALFORMED'));
-
-      // Act & Assert
-      await expect(adminService.googleSignup(mockGoogleSignup)).rejects.toThrow(
-        new UnauthorizedException('GOOGLE_TOKEN_MALFORMED'),
-      );
-    });
-
-    it('should throw exception for general google auth errors', async () => {
-      // Arrange
-      adminService.verifyGoogleToken = jest
-        .fn()
-        .mockRejectedValue(new UnauthorizedException('GOOGLE_AUTH_ERROR'));
-
-      // Act & Assert
-      await expect(adminService.googleSignup(mockGoogleSignup)).rejects.toThrow(
-        new UnauthorizedException('GOOGLE_AUTH_ERROR'),
-      );
     });
   });
 
@@ -723,7 +405,7 @@ describe('AdminService', () => {
       await expect(adminService.verifyOtp(mockRequest as ECoreReq, mockVerifyOtp)).rejects.toThrow(
         new NotFoundException({
           message: 'INVALID_EMAIL_OR_PASSWORD',
-        }),
+        })
       );
 
       expect(ipBlockingGuard.trackFailedAttempt).toHaveBeenCalledWith(mockRequest.ip);
@@ -754,7 +436,7 @@ describe('AdminService', () => {
         new BadRequestException({
           message: 'INVALID_OTP',
           data: { email: mockVerifyOtp.email },
-        }),
+        })
       );
 
       expect(ipBlockingGuard.trackFailedAttempt).toHaveBeenCalledWith(mockRequest.ip);
@@ -787,7 +469,7 @@ describe('AdminService', () => {
         new BadRequestException({
           message: 'OTP_EXPIRED',
           data: { email: mockVerifyOtp.email },
-        }),
+        })
       );
     });
 
@@ -808,7 +490,7 @@ describe('AdminService', () => {
         new BadRequestException({
           message: 'INVALID_OTP',
           data: { email: mockVerifyOtp.email },
-        }),
+        })
       );
 
       expect(ipBlockingGuard.trackFailedAttempt).toHaveBeenCalledWith(mockRequest.ip);
@@ -900,7 +582,7 @@ describe('AdminService', () => {
         new BadRequestException({
           message: 'INVALID_EMAIL_OR_PASSWORD',
           data: { email: mockResendOtp.email },
-        }),
+        })
       );
 
       expect(ipBlockingGuard.trackFailedAttempt).toHaveBeenCalledWith(mockRequest.ip);
@@ -933,7 +615,7 @@ describe('AdminService', () => {
       await expect(adminService.resendOtp(mockRequest as ECoreReq, mockResendOtp)).rejects.toThrow(
         new BadRequestException({
           message: 'OTP_COOLDOWN_TIME',
-        }),
+        })
       );
 
       expect(ipBlockingGuard.trackFailedAttempt).toHaveBeenCalledWith(mockRequest.ip);
@@ -997,7 +679,7 @@ describe('AdminService', () => {
       await expect(adminService.verifyToken(userId)).rejects.toThrow(
         new NotFoundException({
           message: 'INVALID_EMAIL_OR_PASSWORD',
-        }),
+        })
       );
     });
 
@@ -1030,8 +712,8 @@ describe('AdminService', () => {
           {
             message: 'INCOMPLETE_PROFILE',
           },
-          HttpStatus.ACCEPTED,
-        ),
+          HttpStatus.ACCEPTED
+        )
       );
     });
 
@@ -1053,8 +735,8 @@ describe('AdminService', () => {
           {
             message: 'USER_NOT_ASSOCIATED_WITH_ANY_ORGANIZATION',
           },
-          203,
-        ),
+          203
+        )
       );
     });
 
@@ -1087,8 +769,8 @@ describe('AdminService', () => {
             message: 'USER_PLAN_DEACTIVATED',
             statusCode: 400,
           },
-          400,
-        ),
+          400
+        )
       );
     });
   });
@@ -1155,7 +837,7 @@ describe('AdminService', () => {
       await expect(adminService.completeProfile(userId, completeProfileDto)).rejects.toThrow(
         new NotFoundException({
           message: 'INVALID_EMAIL_OR_PASSWORD',
-        }),
+        })
       );
 
       expect(prismaService.user.findUnique).toHaveBeenCalledWith({
@@ -1183,7 +865,7 @@ describe('AdminService', () => {
 
       // Act & Assert
       await expect(adminService.registerOrganization(userId, orgRegisterDto)).rejects.toThrow(
-        new BadRequestException({ message: 'USER_ALREADY_REGISTERED' }),
+        new BadRequestException({ message: 'USER_ALREADY_REGISTERED' })
       );
 
       expect(prismaService.organizationMember.findFirst).toHaveBeenCalledWith({
@@ -1211,7 +893,7 @@ describe('AdminService', () => {
 
       // Act & Assert
       await expect(adminService.registerOrganization(userId, orgRegisterDto)).rejects.toThrow(
-        new BadRequestException({ message: 'ORGANIZATION_ALREADY_EXISTS' }),
+        new BadRequestException({ message: 'ORGANIZATION_ALREADY_EXISTS' })
       );
 
       expect(prismaService.organization.findFirst).toHaveBeenCalledWith({
@@ -1360,12 +1042,12 @@ describe('AdminService', () => {
 
       // Act & Assert
       await expect(
-        adminService.forgotPassword(mockRequest as ECoreReq, forgotPasswordDto),
+        adminService.forgotPassword(mockRequest as ECoreReq, forgotPasswordDto)
       ).rejects.toThrow(
         new BadRequestException({
           message: 'INVALID_EMAIL_OR_PASSWORD',
           data: { email: forgotPasswordDto.email },
-        }),
+        })
       );
 
       // Verify IP and email blocking was called
@@ -1396,11 +1078,11 @@ describe('AdminService', () => {
 
       // Act & Assert
       await expect(
-        adminService.forgotPassword(mockRequest as ECoreReq, forgotPasswordDto),
+        adminService.forgotPassword(mockRequest as ECoreReq, forgotPasswordDto)
       ).rejects.toThrow(
         new BadRequestException({
           message: 'OTP_COOLDOWN_TIME',
-        }),
+        })
       );
 
       // Verify IP and email blocking was called
@@ -1423,7 +1105,7 @@ describe('AdminService', () => {
       // Act
       const response = await adminService.forgotPassword(
         mockRequest as ECoreReq,
-        forgotPasswordDto,
+        forgotPasswordDto
       );
 
       // Assert
@@ -1449,7 +1131,7 @@ describe('AdminService', () => {
       // Act
       const response = await adminService.forgotPassword(
         mockRequest as ECoreReq,
-        forgotPasswordDto,
+        forgotPasswordDto
       );
 
       // Assert
@@ -1497,7 +1179,7 @@ describe('AdminService', () => {
       await expect(adminService.resetPassword(userId, resetPasswordDto)).rejects.toThrow(
         new NotFoundException({
           message: 'INVALID_EMAIL_OR_PASSWORD',
-        }),
+        })
       );
 
       // Verify findUnique was called with correct parameters
@@ -1656,7 +1338,7 @@ describe('AdminService', () => {
 
       // Act & Assert
       await expect(
-        adminService.crmLogin(mockRequest as ECoreReq, loginDto, Platform.WEBSITE),
+        adminService.crmLogin(mockRequest as ECoreReq, loginDto, Platform.WEBSITE)
       ).rejects.toThrow(new UnauthorizedException('INVALID_CREDENTIAL'));
 
       // Verify method calls
@@ -1686,7 +1368,7 @@ describe('AdminService', () => {
 
       // Act & Assert
       await expect(
-        adminService.crmLogin(mockRequest as ECoreReq, loginDto, Platform.WEBSITE),
+        adminService.crmLogin(mockRequest as ECoreReq, loginDto, Platform.WEBSITE)
       ).rejects.toThrow(new UnauthorizedException('INVALID_CREDENTIAL'));
 
       // Verify method calls
@@ -1698,7 +1380,7 @@ describe('AdminService', () => {
       });
       expect(hashingService.comparePasswords).toHaveBeenCalledWith(
         loginDto.password,
-        mockUser.password,
+        mockUser.password
       );
       expect(ipBlockingGuard.trackFailedAttempt).toHaveBeenCalledWith(mockRequest.ip);
       expect(emailBlockingGuard.trackFailedAttempt).toHaveBeenCalledWith(loginDto.email);
@@ -1728,14 +1410,14 @@ describe('AdminService', () => {
 
       // Act & Assert
       await expect(
-        adminService.crmLogin(mockRequest as ECoreReq, loginDto, Platform.WEBSITE),
+        adminService.crmLogin(mockRequest as ECoreReq, loginDto, Platform.WEBSITE)
       ).rejects.toThrow(
         new HttpException(
           {
             message: 'INCOMPLETE_PROFILE',
           },
-          HttpStatus.ACCEPTED,
-        ),
+          HttpStatus.ACCEPTED
+        )
       );
 
       // Verify user findUnique was called twice
@@ -1785,14 +1467,14 @@ describe('AdminService', () => {
 
       // Act & Assert
       await expect(
-        adminService.crmLogin(mockRequest as ECoreReq, loginDto, Platform.WEBSITE),
+        adminService.crmLogin(mockRequest as ECoreReq, loginDto, Platform.WEBSITE)
       ).rejects.toThrow(
         new HttpException(
           {
             message: 'USER_NOT_ASSOCIATED_WITH_ANY_ORGANIZATION',
           },
-          203,
-        ),
+          203
+        )
       );
 
       // Verify method calls
@@ -1829,15 +1511,15 @@ describe('AdminService', () => {
 
       // Act & Assert
       await expect(
-        adminService.crmLogin(mockRequest as ECoreReq, loginDto, Platform.WEBSITE),
+        adminService.crmLogin(mockRequest as ECoreReq, loginDto, Platform.WEBSITE)
       ).rejects.toThrow(
         new HttpException(
           {
             message: 'USER_NOT_TAKEN_ANY_PLAN',
             statusCode: 206,
           },
-          206,
-        ),
+          206
+        )
       );
 
       // Verify method calls
@@ -1909,14 +1591,14 @@ describe('AdminService', () => {
 
       // Act & Assert
       await expect(
-        adminService.crmLogin(mockRequest as ECoreReq, loginDto, Platform.WEBSITE),
+        adminService.crmLogin(mockRequest as ECoreReq, loginDto, Platform.WEBSITE)
       ).rejects.toThrow(new UnauthorizedException('SUBSCRIPTION_EXPIRED'));
 
       // Verify all required method calls
       expect(prismaService.user.findUnique).toHaveBeenCalledTimes(2);
       expect(hashingService.comparePasswords).toHaveBeenCalledWith(
         loginDto.password,
-        mockUser.password,
+        mockUser.password
       );
       expect(prismaService.organizationMember.findFirst).toHaveBeenCalledWith({
         where: {
@@ -2019,7 +1701,7 @@ describe('AdminService', () => {
       const result = await adminService.crmLogin(
         mockRequest as ECoreReq,
         loginDto,
-        Platform.WEBSITE,
+        Platform.WEBSITE
       );
 
       // Assert
@@ -2032,7 +1714,7 @@ describe('AdminService', () => {
       expect(jwtService.generateSubdomainToken).toHaveBeenCalledWith(
         mockUser.id,
         mockOrgMember.organization.id,
-        expect.any(String),
+        expect.any(String)
       );
       expect(prismaService.organizationMember.update).toHaveBeenCalledWith({
         where: {
@@ -2130,14 +1812,14 @@ describe('AdminService', () => {
       const result = await adminService.crmLogin(
         mockRequest as ECoreReq,
         loginDto,
-        Platform.WEBSITE,
+        Platform.WEBSITE
       );
 
       // Assert - verify all steps were executed
       expect(prismaService.user.findUnique).toHaveBeenCalledTimes(2);
       expect(hashingService.comparePasswords).toHaveBeenCalledWith(
         loginDto.password,
-        mockUser.password,
+        mockUser.password
       );
       expect(prismaService.organizationMember.findFirst).toHaveBeenCalledWith({
         where: {
@@ -2172,7 +1854,7 @@ describe('AdminService', () => {
       expect(jwtService.generateSubdomainToken).toHaveBeenCalledWith(
         mockUser.id,
         mockOrgMember.organization.id,
-        expect.any(String),
+        expect.any(String)
       );
       expect(prismaService.organizationMember.update).toHaveBeenCalledWith({
         where: {
@@ -2288,7 +1970,7 @@ describe('AdminService', () => {
 
       // Act & Assert
       await expect(
-        adminService.appExtensionLogin(mockRequest as ECoreReq, loginDto, Platform.APP),
+        adminService.appExtensionLogin(mockRequest as ECoreReq, loginDto, Platform.APP)
       ).rejects.toThrow(new UnauthorizedException('INVALID_CREDENTIAL'));
 
       // Verify method calls
@@ -2308,7 +1990,7 @@ describe('AdminService', () => {
 
       // Act & Assert
       await expect(
-        adminService.appExtensionLogin(mockRequest as ECoreReq, loginDto, Platform.APP),
+        adminService.appExtensionLogin(mockRequest as ECoreReq, loginDto, Platform.APP)
       ).rejects.toThrow(new UnauthorizedException('INVALID_CREDENTIAL'));
 
       // Verify method calls
@@ -2320,7 +2002,7 @@ describe('AdminService', () => {
       });
       expect(hashingService.comparePasswords).toHaveBeenCalledWith(
         loginDto.password,
-        mockUser.password,
+        mockUser.password
       );
       expect(ipBlockingGuard.trackFailedAttempt).toHaveBeenCalledWith(mockRequest.ip);
       expect(emailBlockingGuard.trackFailedAttempt).toHaveBeenCalledWith(loginDto.email);
@@ -2343,14 +2025,14 @@ describe('AdminService', () => {
 
       // Act & Assert
       await expect(
-        adminService.appExtensionLogin(mockRequest as ECoreReq, loginDto, Platform.APP),
+        adminService.appExtensionLogin(mockRequest as ECoreReq, loginDto, Platform.APP)
       ).rejects.toThrow(
         new HttpException(
           {
             message: 'INCOMPLETE_PROFILE',
           },
-          HttpStatus.ACCEPTED,
-        ),
+          HttpStatus.ACCEPTED
+        )
       );
 
       // Verify user findUnique was called twice
@@ -2392,14 +2074,14 @@ describe('AdminService', () => {
 
       // Act & Assert
       await expect(
-        adminService.appExtensionLogin(mockRequest as ECoreReq, loginDto, Platform.APP),
+        adminService.appExtensionLogin(mockRequest as ECoreReq, loginDto, Platform.APP)
       ).rejects.toThrow(
         new HttpException(
           {
             message: 'USER_NOT_ASSOCIATED_WITH_ANY_ORGANIZATION',
           },
-          203,
-        ),
+          203
+        )
       );
 
       // Verify method calls
@@ -2428,15 +2110,15 @@ describe('AdminService', () => {
 
       // Act & Assert
       await expect(
-        adminService.appExtensionLogin(mockRequest as ECoreReq, loginDto, Platform.APP),
+        adminService.appExtensionLogin(mockRequest as ECoreReq, loginDto, Platform.APP)
       ).rejects.toThrow(
         new HttpException(
           {
             message: 'USER_NOT_TAKEN_ANY_PLAN',
             statusCode: 206,
           },
-          206,
-        ),
+          206
+        )
       );
 
       // Verify method calls
@@ -2452,14 +2134,14 @@ describe('AdminService', () => {
 
       // Act & Assert
       await expect(
-        adminService.appExtensionLogin(mockRequest as ECoreReq, loginDto, Platform.APP),
+        adminService.appExtensionLogin(mockRequest as ECoreReq, loginDto, Platform.APP)
       ).rejects.toThrow(new UnauthorizedException('SUBSCRIPTION_EXPIRED'));
 
       // Verify all required method calls
       expect(prismaService.user.findUnique).toHaveBeenCalledTimes(2);
       expect(hashingService.comparePasswords).toHaveBeenCalledWith(
         loginDto.password,
-        mockUser.password,
+        mockUser.password
       );
       expect(prismaService.organizationMember.findFirst).toHaveBeenCalledWith({
         where: {
@@ -2516,7 +2198,7 @@ describe('AdminService', () => {
       const result = await adminService.appExtensionLogin(
         mockRequest as ECoreReq,
         loginDto,
-        Platform.APP,
+        Platform.APP
       );
 
       // Assert
@@ -2558,7 +2240,7 @@ describe('AdminService', () => {
       const result = await adminService.appExtensionLogin(
         mockRequest as ECoreReq,
         loginDto,
-        Platform.EXTENSION,
+        Platform.EXTENSION
       );
 
       // Assert
@@ -2684,7 +2366,7 @@ describe('AdminService', () => {
 
       // Act & Assert
       await expect(
-        adminService.googleLoginApp(mockRequest as ECoreReq, googleSigninDto),
+        adminService.googleLoginApp(mockRequest as ECoreReq, googleSigninDto)
       ).rejects.toThrow(error);
 
       // Verify method calls
@@ -2698,7 +2380,7 @@ describe('AdminService', () => {
 
       // Act & Assert
       await expect(
-        adminService.googleLoginApp(mockRequest as ECoreReq, googleSigninDto),
+        adminService.googleLoginApp(mockRequest as ECoreReq, googleSigninDto)
       ).rejects.toThrow(new UnauthorizedException('USER_NOT_FOUND'));
 
       // Verify method calls
@@ -2730,14 +2412,14 @@ describe('AdminService', () => {
 
       // Act & Assert
       await expect(
-        adminService.googleLoginApp(mockRequest as ECoreReq, googleSigninDto),
+        adminService.googleLoginApp(mockRequest as ECoreReq, googleSigninDto)
       ).rejects.toThrow(
         new HttpException(
           {
             message: 'INCOMPLETE_PROFILE',
           },
-          HttpStatus.ACCEPTED,
-        ),
+          HttpStatus.ACCEPTED
+        )
       );
 
       // Verify user findUnique was called twice
@@ -2779,14 +2461,14 @@ describe('AdminService', () => {
 
       // Act & Assert
       await expect(
-        adminService.googleLoginApp(mockRequest as ECoreReq, googleSigninDto),
+        adminService.googleLoginApp(mockRequest as ECoreReq, googleSigninDto)
       ).rejects.toThrow(
         new HttpException(
           {
             message: 'USER_NOT_ASSOCIATED_WITH_ANY_ORGANIZATION',
           },
-          203,
-        ),
+          203
+        )
       );
 
       // Verify method calls
@@ -2815,15 +2497,15 @@ describe('AdminService', () => {
 
       // Act & Assert
       await expect(
-        adminService.googleLoginApp(mockRequest as ECoreReq, googleSigninDto),
+        adminService.googleLoginApp(mockRequest as ECoreReq, googleSigninDto)
       ).rejects.toThrow(
         new HttpException(
           {
             message: 'USER_NOT_TAKEN_ANY_PLAN',
             statusCode: 206,
           },
-          206,
-        ),
+          206
+        )
       );
 
       // Verify method calls
@@ -2839,7 +2521,7 @@ describe('AdminService', () => {
 
       // Act & Assert
       await expect(
-        adminService.googleLoginApp(mockRequest as ECoreReq, googleSigninDto),
+        adminService.googleLoginApp(mockRequest as ECoreReq, googleSigninDto)
       ).rejects.toThrow(new UnauthorizedException('SUBSCRIPTION_EXPIRED'));
 
       // Verify all required method calls
@@ -3042,7 +2724,7 @@ describe('AdminService', () => {
 
       // Act & Assert
       await expect(
-        adminService.googleLoginCrm(mockRequest as ECoreReq, googleSigninDto),
+        adminService.googleLoginCrm(mockRequest as ECoreReq, googleSigninDto)
       ).rejects.toThrow(error);
 
       // Verify method calls
@@ -3094,14 +2776,14 @@ describe('AdminService', () => {
 
       // Act & Assert
       await expect(
-        adminService.googleLoginCrm(mockRequest as ECoreReq, googleSigninDto),
+        adminService.googleLoginCrm(mockRequest as ECoreReq, googleSigninDto)
       ).rejects.toThrow(
         new HttpException(
           {
             message: 'USER_NOT_ASSOCIATED_WITH_ANY_ORGANIZATION',
           },
-          203,
-        ),
+          203
+        )
       );
 
       // Verify method calls
@@ -3137,15 +2819,15 @@ describe('AdminService', () => {
 
       // Act & Assert
       await expect(
-        adminService.googleLoginCrm(mockRequest as ECoreReq, googleSigninDto),
+        adminService.googleLoginCrm(mockRequest as ECoreReq, googleSigninDto)
       ).rejects.toThrow(
         new HttpException(
           {
             message: 'USER_PLAN_DEACTIVATED',
             statusCode: 400,
           },
-          400,
-        ),
+          400
+        )
       );
 
       // Verify method calls
@@ -3161,7 +2843,7 @@ describe('AdminService', () => {
 
       // Act & Assert
       await expect(
-        adminService.googleLoginCrm(mockRequest as ECoreReq, googleSigninDto),
+        adminService.googleLoginCrm(mockRequest as ECoreReq, googleSigninDto)
       ).rejects.toThrow(new UnauthorizedException('SUBSCRIPTION_EXPIRED'));
     });
 
@@ -3228,7 +2910,7 @@ describe('AdminService', () => {
       expect(jwtService.generateSubdomainToken).toHaveBeenCalledWith(
         mockUser.id,
         ownerOrgMember.organization.id,
-        expect.any(String),
+        expect.any(String)
       );
     });
 
@@ -3304,7 +2986,7 @@ describe('AdminService', () => {
       expect(jwtService.generateSubdomainToken).toHaveBeenCalledWith(
         mockUser.id,
         mockOrgMember.organization.id,
-        expect.any(String),
+        expect.any(String)
       );
     });
   });
@@ -3343,7 +3025,7 @@ describe('AdminService', () => {
 
       // Act & Assert
       await expect(
-        adminService.editOrganization(mockUser as RequestUser, body, null),
+        adminService.editOrganization(mockUser as RequestUser, body, null)
       ).rejects.toThrow(new UnauthorizedException('ORGANIZATION_NOT_FOUND'));
     });
 
@@ -3354,7 +3036,7 @@ describe('AdminService', () => {
       prismaService.organizationMember.findFirst = jest.fn().mockResolvedValue(null);
 
       await expect(
-        adminService.editOrganization(mockUser as RequestUser, body, null),
+        adminService.editOrganization(mockUser as RequestUser, body, null)
       ).rejects.toThrow('UNAUTHORIZED_ACCESS');
     });
 
@@ -3373,7 +3055,7 @@ describe('AdminService', () => {
 
       // Act & Assert
       await expect(
-        adminService.editOrganization(mockUser as RequestUser, dto, null),
+        adminService.editOrganization(mockUser as RequestUser, dto, null)
       ).rejects.toThrow(new BadRequestException('SUBDOMAIN_ALREADY_EXISTS'));
     });
 
@@ -3391,7 +3073,7 @@ describe('AdminService', () => {
       prismaService.organization.findUnique = jest.fn().mockResolvedValue(mockOrganization);
 
       await expect(adminService.editOrganization(mockUser, dto, null)).rejects.toThrow(
-        new BadRequestException('ORGANIZATION_ALREADY_EXISTS'),
+        new BadRequestException('ORGANIZATION_ALREADY_EXISTS')
       );
     });
 
@@ -3498,7 +3180,7 @@ describe('AdminService', () => {
 
       // Act and asssert
       expect(adminService.getProfileDetail(user as unknown as RequestUser)).rejects.toThrow(
-        new UnauthorizedException('USER_NOT_FOUND'),
+        new UnauthorizedException('USER_NOT_FOUND')
       );
     });
   });
@@ -3540,7 +3222,7 @@ describe('AdminService', () => {
 
       // Act and assert
       expect(
-        adminService.editProfile(user as unknown as RequestUser, body, mockFile),
+        adminService.editProfile(user as unknown as RequestUser, body, mockFile)
       ).rejects.toThrow(new BadRequestException('USER_NOT_FOUND'));
     });
 
@@ -3563,7 +3245,7 @@ describe('AdminService', () => {
       const result = await adminService.editProfile(
         user as unknown as RequestUser,
         updateData,
-        null,
+        null
       );
 
       // Assert
@@ -3612,7 +3294,7 @@ describe('AdminService', () => {
 
       // Act and assert
       expect(adminService.getOrganizationDetail(user)).rejects.toThrow(
-        new UnauthorizedException('ORGANIZATION_NOT_FOUND'),
+        new UnauthorizedException('ORGANIZATION_NOT_FOUND')
       );
     });
 

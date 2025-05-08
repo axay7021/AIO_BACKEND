@@ -1,6 +1,6 @@
 {
   "ADMIN_SIGNUP_FAILED": "Admin signup failed",
-  "ADMIN_SIGNUP_SUCCESS": "Account created! Please check your email to verify your account.",
+  "ADMIN_CREATE_SUCCESS": "Account created! Please check your email to verify your account.",
   "USER_CREATED_SUCCESSFULLY": "Welcome! Your account has been created.",
   "USER_UPDATED_SUCCESSFULLY": "Your profile has been updated.",
   "USER_DELETED_SUCCESSFULLY": "Account successfully deleted.",

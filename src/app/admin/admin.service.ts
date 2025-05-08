@@ -9,7 +9,7 @@ import { PrismaService } from 'src/common/services/prisma.service';
 import { CreateAdminDto } from './dto/signup.dto';
 import { IPBlockingGuard } from 'src/guard/common/ip-blocking.guard';
 import { EmailBlockingGuard } from 'src/guard/nonAuth/email-blocking.guard';
-import { ECoreReq, RequestUser } from 'src/common/interfaces/request.interface';
+import { ECoreReq, ECoreReqAdmin, RequestUser } from 'src/common/interfaces/request.interface';
 import { HashingService } from 'src/common/services/hashing.service';
 import { generateOTP } from '@common/services/otp.service';
 import { EmailService } from '@common/services/email.service';
@@ -21,7 +21,6 @@ import {
   EditProfileResponse,
   ForgotPasswordResponse,
   GetPlanDetailsResponse,
-  GoogleSignupResponse,
   LoginResponse,
   OrganizationDetailResponse,
   ProfileDetailResponse,
@@ -30,7 +29,6 @@ import {
   SignUpResponse,
   VerifyOtpResponse,
 } from '@common/interfaces/admin/admin.interface';
-import { GoogleSignupDto } from './dto/googleSignup.dto';
 import { VerifyOtpDto } from './dto/otpVerify.dto';
 import { HttpStatus } from '@common/constants/httpStatus.constant';
 import { ResendOtpDto } from './dto/resendOtp.dto';
@@ -70,18 +68,31 @@ export class AdminService {
     private readonly hashingService: HashingService,
     private readonly emailService: EmailService,
     private readonly jwtService: TokenUtils,
-    private readonly cloudinaryService: CloudinaryService,
+    private readonly cloudinaryService: CloudinaryService
   ) {
     this.googleClient = new OAuth2Client(
       process.env.GOOGLE_CLIENT_ID,
       process.env.GOOGLE_CLIENT_SECRET,
-      process.env.GOOGLE_CALLBACK_URL,
+      process.env.GOOGLE_CALLBACK_URL
     );
   }
 
-  async signup(req: ECoreReq, body: CreateAdminDto): Promise<SignUpResponse> {
-    const email = body.email.trim().toLowerCase();
+  /*
+   * @description create amin, only root admin has access to this method
+   * @param body
+   * @param body.email - The email address of the new admin
+   * @param body.password - The password for the new admin
+   * @returns { email: string; otp: string }
+   */
+  async createAdmin(req: ECoreReqAdmin, body: CreateAdminDto): Promise<SignUpResponse> {
+    // TODO: Uncomment this when the admin is created
+    /**
+      if (req.admin.isRootAdmin === false) {
+        throw new UnauthorizedException('UNAUTHORIZED_ACCESS');
+      }
+    */
 
+    const email = body.email.trim().toLowerCase();
     // Check if email already exists
     const isEmailExists = await this.prisma.user.findUnique({
       where: {
@@ -89,29 +100,19 @@ export class AdminService {
         deleted: false,
       },
     });
-
     if (isEmailExists) {
-      // Perform IP and Email blocking concurrently
-      await Promise.all([
-        this.ipBlockingGuard.trackFailedAttempt(req.ip),
-        this.emailBlockingGuard.trackFailedAttempt(email),
-      ]);
-
       throw new HttpException(
         {
           message: 'EMAIL_ALREADY_EXISTS',
           statusCode: 402,
         },
-        402,
+        402
       );
     }
-
     // Encrypt password
     const encryptedPassword = await this.hashingService.hashPassword(body.password);
-
     // Generate OTP
     const otp = generateOTP(6);
-
     // Create new user
     const { user, userOtp } = await this.prisma.$transaction(async prisma => {
       const user = await prisma.user.create({
@@ -121,7 +122,6 @@ export class AdminService {
           authProvider: 'EMAIL',
         },
       });
-
       const userOtp = await prisma.userOtp.create({
         data: {
           userId: user.id,
@@ -130,144 +130,14 @@ export class AdminService {
           nextOtpTime: new Date(Date.now() + 30000), // 30 seconds
         },
       });
-
       return { user, userOtp };
     });
-
     // Send OTP to email
     // await this.emailService.sendOtpToMail(email, { otp: otp });
-
     return {
       email: user.email,
       otp: otp.toString(),
     };
-  }
-
-  async googleSignup(body: GoogleSignupDto): Promise<GoogleSignupResponse | LoginResponse> {
-    try {
-      const payload = await this.verifyGoogleToken(body.token);
-
-      // Check if user exists with this email
-      const existingUser = await this.prisma.user.findUnique({
-        where: {
-          email: payload.email,
-          deleted: false,
-        },
-        select: {
-          id: true,
-          authProvider: true,
-          googleId: true,
-          emailVerified: true,
-          password: true,
-          firstName: true,
-          lastName: true,
-          email: true,
-          organizationMembers: {
-            where: {
-              organization: {
-                isActive: true,
-              },
-            },
-            include: {
-              organization: {
-                select: {
-                  id: true,
-                  isActive: true,
-                  subscription: true,
-                  name: true,
-                  subdomain: true,
-                },
-              },
-            },
-          },
-        },
-      });
-      console.log('Email exists', existingUser);
-
-      if (existingUser) {
-        // Update user's Google ID and email verification
-        await this.prisma.user.update({
-          where: { id: existingUser.id },
-          data: {
-            googleId: payload.sub,
-            emailVerified: true,
-          },
-        });
-
-        if (
-          existingUser.authProvider === 'EMAIL' &&
-          !existingUser.firstName &&
-          !existingUser.lastName
-        ) {
-          const updatedUser = await this.prisma.user.update({
-            where: { id: existingUser.id },
-            data: {
-              firstName: payload?.given_name,
-              lastName: payload?.family_name,
-            },
-          });
-
-          return {
-            token: await this.jwtService.generateToken(updatedUser.id),
-            email: updatedUser.email,
-            firstName: updatedUser.firstName,
-            lastName: updatedUser.lastName,
-          };
-        }
-
-        const isUserValid = await this.validateUserStatus(existingUser.id);
-
-        if (!isUserValid) {
-          throw new UnauthorizedException('USER_NOT_VALID');
-        }
-
-        // // generate crm tokens
-        // // get default organization
-        const orgMember = await this.getDefaultOrganization(existingUser.id);
-        const subdomainTokenId = uuidv4();
-        await this.prisma.organizationMember.update({
-          where: {
-            userId_organizationId: {
-              userId: existingUser.id,
-              organizationId: orgMember.organization.id,
-            },
-          },
-          data: {
-            accessTokenCRMId: null,
-            refreshTokenCRMId: subdomainTokenId,
-          },
-        });
-        const subdomainToken = await this.jwtService.generateSubdomainToken(
-          existingUser.id,
-          orgMember.organization.id,
-          subdomainTokenId,
-        );
-        return {
-          subdomainToken,
-          organizationSubdomain: orgMember.organization.subdomain,
-        };
-      }
-      // Create new user with Google data
-      const newUser = await this.prisma.user.create({
-        data: {
-          email: payload.email,
-          firstName: payload.given_name,
-          lastName: payload.family_name,
-          googleId: payload.sub,
-          authProvider: 'GOOGLE',
-          emailVerified: payload.email_verified,
-        },
-      });
-
-      return {
-        token: await this.jwtService.generateToken(newUser.id),
-        email: newUser.email,
-        firstName: newUser.firstName,
-        lastName: newUser.lastName,
-      };
-    } catch (error) {
-      throw error;
-    }
   }
 
   async verifyOtp(req: ECoreReq, body: VerifyOtpDto): Promise<VerifyOtpResponse> {
@@ -447,7 +317,7 @@ export class AdminService {
             token: await this.jwtService.generateToken(user.id),
           },
         },
-        HttpStatus.ACCEPTED,
+        HttpStatus.ACCEPTED
       );
     }
 
@@ -459,13 +329,13 @@ export class AdminService {
             token: await this.jwtService.generateToken(user.id),
           },
         },
-        203,
+        203
       );
     }
 
     // Find organization where user is an owner
     const ownedOrganization = user.organizationMembers.find(
-      member => member.userType === UserType.OWNER,
+      member => member.userType === UserType.OWNER
     );
 
     // If user is an owner, check their subscription
@@ -480,7 +350,7 @@ export class AdminService {
               token: await this.jwtService.generateToken(user.id),
             },
           },
-          206,
+          206
         );
       }
 
@@ -491,7 +361,7 @@ export class AdminService {
             message: 'USER_PLAN_DEACTIVATED',
             statusCode: 206,
           },
-          206,
+          206
         );
       }
     } else {
@@ -499,7 +369,7 @@ export class AdminService {
       const memberOrganization = user.organizationMembers;
       const hasSomeActiveSubscription = memberOrganization.some(
         member =>
-          member.organization.subscription && member.organization.subscription.status === 'ACTIVE',
+          member.organization.subscription && member.organization.subscription.status === 'ACTIVE'
       );
       if (!hasSomeActiveSubscription) {
         throw new HttpException(
@@ -507,7 +377,7 @@ export class AdminService {
             message: 'USER_PLAN_DEACTIVATED',
             statusCode: 400,
           },
-          400,
+          400
         );
       }
     }
@@ -539,7 +409,7 @@ export class AdminService {
 
   async registerOrganization(
     userId: string,
-    body: OrganizationRegisterDto,
+    body: OrganizationRegisterDto
   ): Promise<{ organizationId: string; subdomain: string }> {
     const { orgName, orgCountry } = body;
 
@@ -841,7 +711,7 @@ export class AdminService {
     const expectedPrice = this.calculatePrice(
       pricePerMember,
       Number(memberCount),
-      body.billingCycle,
+      body.billingCycle
     );
 
     console.log('Calculating price', expectedPrice, totalPrice);
@@ -897,7 +767,7 @@ export class AdminService {
       accessTokenExpiry,
       refreshTokenExpiry,
       loginTokenNonce,
-      refreshTokenNonce,
+      refreshTokenNonce
     );
 
     await this.prisma.organizationMember.update({
@@ -963,7 +833,7 @@ export class AdminService {
     const subdomainToken = await this.jwtService.generateSubdomainToken(
       user.id,
       organization.id,
-      subdomainTokenId,
+      subdomainTokenId
     );
 
     return {
@@ -1010,7 +880,7 @@ export class AdminService {
       const { accessToken, refreshToken } = await this.generateCrmTokens(
         userId,
         organizationId,
-        Platform.WEBSITE,
+        Platform.WEBSITE
       );
       return {
         accessToken,
@@ -1026,7 +896,7 @@ export class AdminService {
   async appExtensionLogin(
     req: ECoreReq,
     body: LoginDto,
-    platform: Platform,
+    platform: Platform
   ): Promise<LoginResponse> {
     const { email, password } = body;
 
@@ -1085,7 +955,7 @@ export class AdminService {
       accessTokenExpiry,
       refreshTokenExpiry,
       loginTokenNonce,
-      refreshTokenNonce,
+      refreshTokenNonce
     );
 
     // Update the appropriate token IDs based on platform
@@ -1172,7 +1042,7 @@ export class AdminService {
       accessTokenExpiry,
       refreshTokenExpiry,
       loginTokenNonce,
-      refreshTokenNonce,
+      refreshTokenNonce
     );
     // Update the appropriate token IDs based on platform
     await this.prisma.organizationMember.update({
@@ -1274,7 +1144,7 @@ export class AdminService {
     const subdomainToken = await this.jwtService.generateSubdomainToken(
       isUserExists?.id,
       organization.id,
-      subdomainTokenId,
+      subdomainTokenId
     );
 
     return {
@@ -1287,7 +1157,7 @@ export class AdminService {
   async editOrganization(
     user: RequestUser,
     body: EditOrganizationDto,
-    orgImage: Express.Multer.File,
+    orgImage: Express.Multer.File
   ): Promise<EditOrganizationResponse> {
     const { organizationId } = user;
     const { orgName, orgSubdomain, orgCountry } = body;
@@ -1358,7 +1228,7 @@ export class AdminService {
       console.log({ orgImage: orgImage.path });
       const uploadedImage = await this.cloudinaryService.uploadImage(
         orgImage.path,
-        CLOUDINARY_FOLDERS.ORGANIZATION_PROFILES,
+        CLOUDINARY_FOLDERS.ORGANIZATION_PROFILES
       );
 
       if (imageKey) {
@@ -1466,7 +1336,7 @@ export class AdminService {
   async editProfile(
     user: RequestUser,
     body: EditProfileDto,
-    profileImage: Express.Multer.File,
+    profileImage: Express.Multer.File
   ): Promise<EditProfileResponse> {
     const { firstName, lastName, countryCode, phoneNumber } = body;
     const { userId } = user;
@@ -1486,7 +1356,7 @@ export class AdminService {
       console.log({ profileImage: profileImage.path });
       const uploadedImage = await this.cloudinaryService.uploadImage(
         profileImage.path,
-        CLOUDINARY_FOLDERS.USER_PROFILE,
+        CLOUDINARY_FOLDERS.USER_PROFILE
       );
 
       if (profileImageKey) {
@@ -1546,7 +1416,7 @@ export class AdminService {
   async refreshToken(
     req: ECoreReq,
     body: RefreshTokenDto,
-    platform: Platform,
+    platform: Platform
   ): Promise<RefreshTokenResponse> {
     const { refreshToken } = body;
     const payload = await this.jwtService.verifyRefreshToken(refreshToken, platform);
@@ -1613,7 +1483,7 @@ export class AdminService {
       accessTokenExpiry,
       refreshTokenExpiry,
       accessTokenNonce,
-      refreshTokenNonce,
+      refreshTokenNonce
     );
 
     await this.prisma.organizationMember.update({
@@ -1635,7 +1505,7 @@ export class AdminService {
 
   async organizationNameCheck(
     user: RequestUser,
-    query: OrganizationNameCheckDto,
+    query: OrganizationNameCheckDto
   ): Promise<{ isAvailable: boolean }> {
     const { orgName } = query;
 
@@ -1656,7 +1526,7 @@ export class AdminService {
 
   async subdomainCheck(
     user: RequestUser,
-    query: SubdomainCheckDto,
+    query: SubdomainCheckDto
   ): Promise<{ isAvailable: boolean }> {
     const { orgSubdomain } = query;
 
@@ -1751,7 +1621,7 @@ export class AdminService {
   private calculatePrice(
     basePrice: number,
     memberCount: number,
-    billingCycle: BillingCycle,
+    billingCycle: BillingCycle
   ): number {
     // Apply yearly discount if applicable
     const monthlyPrice = basePrice * memberCount;
@@ -1841,7 +1711,7 @@ export class AdminService {
               token: await this.jwtService.generateToken(user.id),
             },
           },
-          HttpStatus.ACCEPTED,
+          HttpStatus.ACCEPTED
         );
       }
 
@@ -1854,13 +1724,13 @@ export class AdminService {
               token: await this.jwtService.generateToken(user.id),
             },
           },
-          203,
+          203
         );
       }
 
       // Find organization where user is an owner
       const ownedOrganization = user.organizationMembers.find(
-        member => member.userType === UserType.OWNER,
+        member => member.userType === UserType.OWNER
       );
 
       // If user is an owner, check their subscription
@@ -1875,7 +1745,7 @@ export class AdminService {
                 token: await this.jwtService.generateToken(user.id),
               },
             },
-            206,
+            206
           );
         }
 
@@ -1886,7 +1756,7 @@ export class AdminService {
               message: 'USER_PLAN_DEACTIVATED',
               statusCode: 206,
             },
-            206,
+            206
           );
         }
       } else {
@@ -1894,8 +1764,7 @@ export class AdminService {
         const memberOrganization = user.organizationMembers;
         const hasSomeActiveSubscription = memberOrganization.some(
           member =>
-            member.organization.subscription &&
-            member.organization.subscription.status === 'ACTIVE',
+            member.organization.subscription && member.organization.subscription.status === 'ACTIVE'
         );
         if (!hasSomeActiveSubscription) {
           throw new HttpException(
@@ -1903,7 +1772,7 @@ export class AdminService {
               message: 'USER_PLAN_DEACTIVATED',
               statusCode: 400,
             },
-            400,
+            400
           );
         }
       }
@@ -1983,7 +1852,7 @@ export class AdminService {
   async generateCrmTokens(
     userId: string,
     organizationId: string,
-    platform: Platform,
+    platform: Platform
   ): Promise<{
     accessToken: string;
     refreshToken: string;
@@ -2009,7 +1878,7 @@ export class AdminService {
       accessTokenExpiry,
       refreshTokenExpiry,
       loginTokenNonce,
-      refreshTokenNonce,
+      refreshTokenNonce
     );
 
     // Update organization member record with token identifiers

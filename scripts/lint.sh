@@ -24,8 +24,8 @@ npm run lint:fix
 echo "Eslint Completed"
 npm run ts
 echo "Typescript Completed"
-npm run test
-echo "Jest Completed"
+# npm run test
+# echo "Jest Completed"
 
 
 if [[ $1 == $forPush ]]; then

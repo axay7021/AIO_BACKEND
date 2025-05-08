@@ -2,7 +2,6 @@ import {
   Body,
   Controller,
   Get,
-  Patch,
   Post,
   Put,
   Query,
@@ -13,6 +12,7 @@ import {
   UseInterceptors,
 } from '@nestjs/common';
 import {
+  ECoreReqAdmin,
   ECoreReqHeader,
   ECoreReqUser,
   ECoreRes,
@@ -25,7 +25,6 @@ import { EmailBlockingGuard } from 'src/guard/nonAuth/email-blocking.guard';
 import { AdminService } from './admin.service';
 import { HttpStatus } from '@common/constants/httpStatus.constant';
 import { CloudinaryService } from '@common/services/clodinary.service';
-import { GoogleSignupDto } from './dto/googleSignup.dto';
 import { VerifyOtpDto } from './dto/otpVerify.dto';
 import { ResendOtpDto } from './dto/resendOtp.dto';
 import { SecurityTokenGuard } from 'src/guard/auth/security-token.guard';
@@ -42,8 +41,6 @@ import { EditOrganizationDto } from './dto/editOrganization.dto';
 import { MulterConfig } from 'src/config/multer.config';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { SubscriptionGuard } from 'src/guard/auth/subscription.guard';
-import { RequireFeature } from '@common/decorator/require-feature.decorator';
-import { FeatureNames } from '@common/enums/feature-names.enum';
 import { EditProfileDto } from './dto/editProfile.dto';
 import { VerifySubdomainTokenDto } from './dto/subdomainTokenVerify.dto';
 import { RefreshTokenDto } from './dto/refreshToken.dto';
@@ -55,36 +52,19 @@ export class adminController {
   constructor(
     private readonly responseService: ResponseService,
     private readonly adminService: AdminService,
-    private readonly cloudinaryService: CloudinaryService,
+    private readonly cloudinaryService: CloudinaryService
   ) {}
 
   // signup  admin
-  @Post('auth/signup')
+  @Post('auth/create-admin')
   @UseGuards(IPBlockingGuard, EmailBlockingGuard)
-  async signup(
-    @Req() req: ECoreReqHeader,
+  async createAdmin(
+    @Req() req: ECoreReqAdmin,
     @Res() res: ECoreRes,
-    @Body() body: CreateAdminDto,
+    @Body() body: CreateAdminDto
   ): Promise<ECoreRes> {
-    const user = await this.adminService.signup(req, body);
-    return this.responseService.success(req, res, 'ADMIN_SIGNUP_SUCCESS', user, HttpStatus.CREATED);
-  }
-
-  @Post('auth/google/signup')
-  @UseGuards(IPBlockingGuard)
-  async googleSignup(
-    @Req() req: ECoreReqHeader,
-    @Res() res: ECoreRes,
-    @Body() body: GoogleSignupDto,
-  ): Promise<ECoreRes> {
-    const user = await this.adminService.googleSignup(body);
-    return this.responseService.success(
-      req,
-      res,
-      'ADMIN_GOOGLE_SIGNUP_SUCCESS',
-      user,
-      HttpStatus.CREATED,
-    );
+    const user = await this.adminService.createAdmin(req, body);
+    return this.responseService.success(req, res, 'ADMIN_CREATE_SUCCESS', user, HttpStatus.CREATED);
   }
 
   @Post('/auth/verify-otp')
@@ -92,7 +72,7 @@ export class adminController {
   async verifyOtp(
     @Req() req: ECoreReqHeader,
     @Res() res: ECoreRes,
-    @Body() body: VerifyOtpDto,
+    @Body() body: VerifyOtpDto
   ): Promise<ECoreRes> {
     const user = await this.adminService.verifyOtp(req, body);
     const { token, _statusCode } = user;
@@ -101,7 +81,7 @@ export class adminController {
       res,
       'OTP_VERIFIED_SUCCESSFULLY',
       { token },
-      _statusCode,
+      _statusCode
     );
   }
 
@@ -110,7 +90,7 @@ export class adminController {
   async resendOtp(
     @Req() req: ECoreReqHeader,
     @Res() res: ECoreRes,
-    @Body() body: ResendOtpDto,
+    @Body() body: ResendOtpDto
   ): Promise<ECoreRes> {
     await this.adminService.resendOtp(req, body);
     return this.responseService.success(
@@ -118,7 +98,7 @@ export class adminController {
       res,
       'OTP_RESENT_SUCCESSFULLY',
       {},
-      HttpStatus.SUCCESS,
+      HttpStatus.SUCCESS
     );
   }
 
@@ -135,7 +115,7 @@ export class adminController {
   async completeProfile(
     @Req() req: ECoreReqHeader,
     @Res() res: ECoreRes,
-    @Body() body: CompleteProfileDto,
+    @Body() body: CompleteProfileDto
   ): Promise<ECoreRes> {
     const userId = req.userId as string;
     await this.adminService.completeProfile(userId, body);
@@ -144,7 +124,7 @@ export class adminController {
       res,
       'PROFILE_UPDATED_SUCCESSFULLY',
       {},
-      HttpStatus.SUCCESS,
+      HttpStatus.SUCCESS
     );
   }
 
@@ -153,7 +133,7 @@ export class adminController {
   async registerOrganization(
     @Req() req: ECoreReqHeader,
     @Res() res: ECoreRes,
-    @Body() body: OrganizationRegisterDto,
+    @Body() body: OrganizationRegisterDto
   ): Promise<ECoreRes> {
     const userId = req.userId as string;
     const data = await this.adminService.registerOrganization(userId, body);
@@ -162,7 +142,7 @@ export class adminController {
       res,
       'ORGANIZATION_REGISTERED_SUCCESSFULLY',
       data,
-      HttpStatus.SUCCESS,
+      HttpStatus.SUCCESS
     );
   }
 
@@ -171,7 +151,7 @@ export class adminController {
   async forgotPassword(
     @Req() req: ECoreReqHeader,
     @Res() res: ECoreRes,
-    @Body() body: ForgotPasswordDto,
+    @Body() body: ForgotPasswordDto
   ): Promise<ECoreRes> {
     const data = await this.adminService.forgotPassword(req, body);
     return this.responseService.success(
@@ -179,7 +159,7 @@ export class adminController {
       res,
       'FORGOT_PASSWORD_OTP_SENT_SUCCESSFULLY',
       data,
-      HttpStatus.SUCCESS,
+      HttpStatus.SUCCESS
     );
   }
 
@@ -188,7 +168,7 @@ export class adminController {
   async resetPassword(
     @Req() req: ECoreReqHeader,
     @Res() res: ECoreRes,
-    @Body() body: ResetPasswordDto,
+    @Body() body: ResetPasswordDto
   ): Promise<ECoreRes> {
     const userId = req.userId as string;
     await this.adminService.resetPassword(userId, body);
@@ -197,7 +177,7 @@ export class adminController {
       res,
       'PASSWORD_RESET_SUCCESSFULLY',
       {},
-      HttpStatus.SUCCESS,
+      HttpStatus.SUCCESS
     );
   }
 
@@ -213,7 +193,7 @@ export class adminController {
   async purchasePlan(
     @Req() req: ECoreReqHeader,
     @Res() res: ECoreRes,
-    @Body() body: PurchasePlanDto,
+    @Body() body: PurchasePlanDto
   ): Promise<ECoreRes> {
     const userId = req.userId as string;
     const data = await this.adminService.purchasePlan(userId, body);
@@ -222,7 +202,7 @@ export class adminController {
       res,
       'PLAN_PURCHASED_SUCCESSFULLY',
       data,
-      HttpStatus.SUCCESS,
+      HttpStatus.SUCCESS
     );
   }
 
@@ -231,7 +211,7 @@ export class adminController {
   async crmLogin(
     @Req() req: ECoreReqHeader,
     @Res() res: ECoreRes,
-    @Body() body: LoginDto,
+    @Body() body: LoginDto
   ): Promise<ECoreRes> {
     const data = await this.adminService.crmLogin(req, body, Platform.WEBSITE);
     return this.responseService.success(req, res, 'LOGIN_SUCCESSFULLY', data, HttpStatus.SUCCESS);
@@ -242,7 +222,7 @@ export class adminController {
   async appLogin(
     @Req() req: ECoreReqHeader,
     @Res() res: ECoreRes,
-    @Body() body: LoginDto,
+    @Body() body: LoginDto
   ): Promise<ECoreRes> {
     const data = await this.adminService.appExtensionLogin(req, body, Platform.APP);
     return this.responseService.success(req, res, 'LOGIN_SUCCESSFULLY', data, HttpStatus.SUCCESS);
@@ -253,7 +233,7 @@ export class adminController {
   async extensionLogin(
     @Req() req: ECoreReqHeader,
     @Res() res: ECoreRes,
-    @Body() body: LoginDto,
+    @Body() body: LoginDto
   ): Promise<ECoreRes> {
     const data = await this.adminService.appExtensionLogin(req, body, Platform.EXTENSION);
     return this.responseService.success(req, res, 'LOGIN_SUCCESSFULLY', data, HttpStatus.SUCCESS);
@@ -264,7 +244,7 @@ export class adminController {
   async googleLoginApp(
     @Req() req: ECoreReqHeader,
     @Res() res: ECoreRes,
-    @Body() body: GoogleSigninDto,
+    @Body() body: GoogleSigninDto
   ): Promise<ECoreRes> {
     const user = await this.adminService.googleLoginApp(req, body);
     return this.responseService.success(req, res, 'LOGIN_SUCCESSFULLY', user, HttpStatus.SUCCESS);
@@ -275,7 +255,7 @@ export class adminController {
   async googleLoginCrm(
     @Req() req: ECoreReqHeader,
     @Res() res: ECoreRes,
-    @Body() body: GoogleSigninDto,
+    @Body() body: GoogleSigninDto
   ): Promise<ECoreRes> {
     const user = await this.adminService.googleLoginCrm(req, body);
     const { _statuscode } = user;
@@ -286,7 +266,7 @@ export class adminController {
   async verifySubdomainToken(
     @Req() req: ECoreReqHeader,
     @Res() res: ECoreRes,
-    @Body() body: VerifySubdomainTokenDto,
+    @Body() body: VerifySubdomainTokenDto
   ): Promise<ECoreRes> {
     const data = await this.adminService.verifySubdomainToken(body.token);
     return this.responseService.success(
@@ -294,7 +274,7 @@ export class adminController {
       res,
       'SUBDOMAIN_TOKEN_VERIFIED',
       data,
-      HttpStatus.SUCCESS,
+      HttpStatus.SUCCESS
     );
   }
 
@@ -305,7 +285,7 @@ export class adminController {
     @Req() req: ECoreReqUser,
     @Res() res: ECoreRes,
     @Body() body: EditOrganizationDto,
-    @UploadedFile() orgImage: Express.Multer.File,
+    @UploadedFile() orgImage: Express.Multer.File
   ): Promise<ECoreRes> {
     const user = req?.user as unknown as RequestUser;
     const data = await this.adminService.editOrganization(user, body, orgImage);
@@ -314,7 +294,7 @@ export class adminController {
       res,
       'ORGANIZATION_EDITED_SUCCESSFULLY',
       data,
-      HttpStatus.SUCCESS,
+      HttpStatus.SUCCESS
     );
   }
 
@@ -333,7 +313,7 @@ export class adminController {
     @Req() req: ECoreReqUser,
     @Res() res: ECoreRes,
     @Body() body: EditProfileDto,
-    @UploadedFile() profileImage: Express.Multer.File,
+    @UploadedFile() profileImage: Express.Multer.File
   ): Promise<ECoreRes> {
     const user = req?.user as unknown as RequestUser;
     console.log({ body, profileImage });
@@ -343,7 +323,7 @@ export class adminController {
       res,
       'PROFILE_UPDATED_SUCCESSFULLY',
       data,
-      HttpStatus.SUCCESS,
+      HttpStatus.SUCCESS
     );
   }
 
@@ -359,7 +339,7 @@ export class adminController {
   async refreshTokenCrm(
     @Req() req: ECoreReqHeader,
     @Res() res: ECoreRes,
-    @Body() body: RefreshTokenDto,
+    @Body() body: RefreshTokenDto
   ): Promise<ECoreRes> {
     const data = await this.adminService.refreshToken(req, body, Platform.WEBSITE);
     return this.responseService.success(req, res, 'TOKEN_REFRESHED', data, HttpStatus.SUCCESS);
@@ -369,7 +349,7 @@ export class adminController {
   async refreshTokenApp(
     @Req() req: ECoreReqHeader,
     @Res() res: ECoreRes,
-    @Body() body: RefreshTokenDto,
+    @Body() body: RefreshTokenDto
   ): Promise<ECoreRes> {
     const data = await this.adminService.refreshToken(req, body, Platform.APP);
     return this.responseService.success(req, res, 'TOKEN_REFRESHED', data, HttpStatus.SUCCESS);
@@ -379,7 +359,7 @@ export class adminController {
   async refreshTokenExtension(
     @Req() req: ECoreReqHeader,
     @Res() res: ECoreRes,
-    @Body() body: RefreshTokenDto,
+    @Body() body: RefreshTokenDto
   ): Promise<ECoreRes> {
     const data = await this.adminService.refreshToken(req, body, Platform.EXTENSION);
     return this.responseService.success(req, res, 'TOKEN_REFRESHED', data, HttpStatus.SUCCESS);
@@ -389,7 +369,7 @@ export class adminController {
   async organizationNameCheck(
     @Req() req: ECoreReqUser,
     @Res() res: ECoreRes,
-    @Query() query: OrganizationNameCheckDto,
+    @Query() query: OrganizationNameCheckDto
   ): Promise<ECoreRes> {
     const user = req?.user as unknown as RequestUser;
     const data = await this.adminService.organizationNameCheck(user, query);
@@ -398,7 +378,7 @@ export class adminController {
       res,
       data.isAvailable ? 'ORGANIZATION_NAME_AVAILABLE' : 'ORGANIZATION_NAME_UNAVAILABLE',
       data,
-      data.isAvailable ? HttpStatus.SUCCESS : HttpStatus.BAD_REQUEST,
+      data.isAvailable ? HttpStatus.SUCCESS : HttpStatus.BAD_REQUEST
     );
   }
 
@@ -406,7 +386,7 @@ export class adminController {
   async subdomainCheck(
     @Req() req: ECoreReqUser,
     @Res() res: ECoreRes,
-    @Query() query: SubdomainCheckDto,
+    @Query() query: SubdomainCheckDto
   ): Promise<ECoreRes> {
     const user = req?.user as unknown as RequestUser;
     const data = await this.adminService.subdomainCheck(user, query);
@@ -415,7 +395,7 @@ export class adminController {
       res,
       data.isAvailable ? 'SUBDOMAIN_AVAILABLE' : 'SUBDOMAIN_UNAVAILABLE',
       data,
-      data.isAvailable ? HttpStatus.SUCCESS : HttpStatus.BAD_REQUEST,
+      data.isAvailable ? HttpStatus.SUCCESS : HttpStatus.BAD_REQUEST
     );
   }
 }
