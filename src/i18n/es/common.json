@@ -1,0 +1,14 @@
+{
+  "USER_CREATED_SUCCESSFULLY": "Usero creado con éxito.",
+  "updated": "Usero actualizado con éxito.",
+  "deleted": "Usero eliminado con éxito.",
+  "not_found": "Usero no encontrado.",
+  "NAME_MUST_BE_STRING": "El nombre debe ser una cadena de caracteres.",
+  "NAME_MUST_BE_DEFINED": "El nombre debe estar definido.",
+  "EMAIL_REQUIRED": "El correo electrónico es obligatorio.",
+  "EMAIL_DEFINED": "El correo electrónico debe estar definido.",
+  "EMAIL_INVALID": "El correo electrónico no es válido.",
+  "NAME_REQUIRED": "El nombre es obligatorio.",
+  "NAME_DEFINED": "El nombre debe estar definido.",
+  "NAME_INVALID": "El nombre debe ser una cadena de texto."
+}

@@ -1,0 +1,6 @@
+node_modules
+
+# Custom
+.vscode
+backup
+public

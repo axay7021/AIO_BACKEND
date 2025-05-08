@@ -1,0 +1,1030 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ======= USER RELATED ENUMS =======
+enum UserType {
+  OWNER //  who owns the organization 
+  MANAGER // For admi n and sub_admin
+  WORKER // For regular members
+}
+
+enum AdminRole {
+  ADMIN
+  SUB_ADMIN
+}
+
+enum RootAdminRole {
+  SUPER_ADMIN
+  SALES_PERSON
+}
+
+enum WorkerRole {
+  ADMINISTRATOR
+  ALL
+  OWN
+}
+
+enum UserStatus {
+  ACTIVE
+  INACTIVE
+  SUSPENDED
+}
+
+// ======= SUBSCRIPTION RELATED ENUMS =======
+enum PlanType {
+  STANDARD
+  PREMIUM
+  CUSTOM
+}
+
+enum BillingCycle {
+  MONTHLY
+  YEARLY
+}
+
+enum FeatureStatus {
+  ACTIVE
+  EXCEEDED
+  SUSPENDED
+}
+
+enum SubscriptionStatus {
+  ACTIVE
+  SUSPENDED
+  CANCELLED
+  EXPIRED
+  TRIAL
+  PAST_DUE
+}
+
+enum AddOnStatus {
+  ACTIVE
+  EXPIRED
+  CANCELLED
+}
+
+enum FeatureType {
+  NUMERIC // For features with limits (e.g., leadLimit, memberLimit)
+  BOOLEAN // For toggle features (e.g., hasChatSync, hasDashboard)
+}
+
+// ======= CUSTOM FIELD RELATED ENUMS =======
+enum CustomFieldType {
+  TEXT
+  NUMBER
+  BOOLEAN
+  DATE
+  SELECT
+  MULTI_SELECT
+  URL
+  EMAIL
+  PHONE
+}
+
+// ======= LEAD RELATED ENUMS =======
+enum LeadStatus {
+  NEW
+  CONTACTED
+  QUALIFIED
+  PROPOSAL
+  NEGOTIATION
+  WON
+  LOST
+  ON_HOLD
+}
+
+enum LeadCreationType {
+  ADMIN_CREATED
+  SUB_ADMIN_CREATED
+  ADMINISTRATOR_CREATED
+  ADMIN_SELF_CREATED
+  SUB_ADMIN_SELF_CREATED
+  ADMINISTRATOR_SELF_CREATED
+  ALL_SELF_CREATED
+  OWN_SELF_CREATED
+}
+
+enum LeadAssignmentType {
+  ADMIN_TO_ALL
+  ADMIN_TO_OWN
+  ADMIN_TO_ADMINISTRATOR
+  ADMIN_TO_SUBADMIN
+  ADMIN_SELF_ASSIGNED
+  SUBADMIN_TO_ALL
+  SUBADMIN_TO_OWN
+  SUBADMIN_TO_ADMINISTRATOR
+  SUBADMIN_SELF_ASSIGNED
+  ADMINISTRATOR_TO_ALL
+  ADMINISTRATOR_TO_OWN
+  ADMINISTRATOR_SELF_ASSIGNED
+  ALL_SELF_ASSIGNED
+  OWN_SELF_ASSIGNED
+}
+
+enum Priority {
+  LOW
+  MEDIUM
+  HIGH
+  URGENT
+}
+
+// ======= COMMUNICATION RELATED ENUMS =======
+enum ChatType {
+  TEXT
+  IMAGE
+  VIDEO
+  AUDIO
+  DOCUMENT
+  LOCATION
+}
+
+enum MessageType {
+  TEXT
+  IMAGE
+  VIDEO
+  AUDIO
+  DOCUMENT
+  LOCATION
+}
+
+enum MessageStatus {
+  SENT
+  DELIVERED
+  READ
+  FAILED
+}
+
+enum MediaType {
+  IMAGE
+  VIDEO
+  AUDIO
+  DOCUMENT
+}
+
+// ======= ACTIVITY AND EVENT RELATED ENUMS =======
+enum ActivityType {
+  LEAD_CREATED
+  LEAD_UPDATED
+  LEAD_STATUS_CHANGED
+  LEAD_ASSIGNED
+  LEAD_UNASSIGNED
+  REMINDER_CREATED
+  REMINDER_COMPLETED
+  TICKET_CREATED
+  TICKET_UPDATED
+  TICKET_CLOSED
+  TAG_ADDED
+  TAG_REMOVED
+  MESSAGE_SENT
+  QUICK_REPLY
+}
+
+enum EventType {
+  MEETING
+  CALL
+  FOLLOW_UP
+  PRESENTATION
+  OTHER
+}
+
+enum EventStatus {
+  SCHEDULED
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+  POSTPONED
+}
+
+enum ReminderStatus {
+  PENDING
+  COMPLETED
+  FAILED
+}
+
+enum TicketStatus {
+  OPEN
+  IN_PROGRESS
+  PENDING
+  ON_HOLD
+  RESOLVED
+  CLOSED
+  CANCELLED
+}
+
+enum TagType {
+  Lead
+  Message
+  Media
+}
+
+// ======= SYSTEM PREFERENCE ENUMS =======
+enum Language {
+  EN
+  JP
+}
+
+enum TZ {
+  AmericaNew_York
+}
+
+enum AuthProvider {
+  EMAIL
+  GOOGLE
+}
+
+// ======= USER MANAGEMENT MODELS =======
+model Admin {
+  id        String        @id @default(uuid())
+  email     String        @unique
+  password  String
+  firstName String
+  lastName  String
+  role      RootAdminRole @default(SUPER_ADMIN)
+  isActive  Boolean       @default(true)
+  deleted   Boolean       @default(false)
+
+  // AccessToken
+  accessTokenId  String?
+  refreshTokenId String?
+
+  // Plan Relations
+  createdPlans  Plan[] @relation("PlanCreator")
+  modifiedPlans Plan[] @relation("PlanModifier")
+
+  // PlanFeature Relations
+  createdPlanFeatures  PlanFeature[] @relation("PlanFeatureCreator")
+  modifiedPlanFeatures PlanFeature[] @relation("PlanFeatureModifier")
+
+  // Custom Field Relations
+  createdCustomFields  CustomField[] @relation("CustomFieldCreator")
+  modifiedCustomFields CustomField[] @relation("CustomFieldModifier")
+
+  // Subscription management relations
+
+  modifiedSubscriptions OrganizationSubscription[] @relation("SubscriptionModifier")
+  planChangeHistory     SubscriptionPlanHistory[]
+
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+  lastLoginAt DateTime?
+  MemberAddOn MemberAddOn[]
+
+  @@map("admins")
+}
+
+model User {
+  id          String  @id @default(uuid())
+  email       String  @unique
+  password    String?
+  firstName   String?
+  lastName    String?
+  countryCode String?
+  phoneNumber String?
+
+  // Auth provider fields
+  authProvider AuthProvider @default(EMAIL)
+  googleId     String?      @unique // Google's unique identifier
+
+  // Profile fields
+  profileImageUrl String?
+  profileImageKey String?
+
+  status        UserStatus @default(ACTIVE)
+  emailVerified Boolean    @default(false)
+
+  otps UserOtp[]
+
+  //   phoneNumberVerified Boolean      @default(false)
+  //   otp                 Int?
+  //   otpExpireTime       DateTime?
+  //   orgRegistered       Boolean      @default(false)
+
+  // Email Verification Fields
+  //   emailVerifyToken        String?
+  //   emailVerifyTokenExpTime DateTime?
+  //   nextVerifyEmailTime     DateTime?
+
+  // Reset Password Fields
+  isPasswordReset Boolean @default(false)
+  //   passwordResetToken         String?
+  //   passwordResetTokenExpTime  DateTime?
+  //   nextPasswordResetEmailTime DateTime?
+
+  // Timestamps
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  lastLoginAt DateTime?
+  deleted     Boolean   @default(false)
+  language    Language  @default(EN)
+  timeZone    TZ        @default(AmericaNew_York)
+  //   fontFamily  FontFamily @default(SAN_SERIF)
+
+  // Organization Related
+  organizationMembers OrganizationMember[]
+  ownedOrganizations  Organization?        @relation("CreatedBy")
+
+  // Department Relations
+  department               Department[]
+  departmentRoles          DepartmentMember[]         @relation("UserDepartmentMember")
+  createdDepartmentMembers DepartmentMember[]         @relation("CreatedByDepartmentMember")
+  createdSubscriptions     OrganizationSubscription[] @relation("SubscriptionCreator")
+
+  // Lead Related Relations
+  leadAssignments LeadAssignment[]
+  createdLeads    Lead[]           @relation("CreatedBy")
+  leadReminders   LeadReminder[]
+  createdTickets  LeadTicket[]     @relation("TicketCreator")
+  assignedTickets LeadTicket[]     @relation("TicketAssignee")
+  sentChats       LeadChat[]       @relation("ChatSender")
+  quickReplies    QuickReply[]
+  leadActivities  LeadActivity[]
+  createdTags     Tag[]
+  createdLabels   Label[]
+  createdEvents   LeadEvent[]
+  // Organization    Organization[]
+
+  @@map("users")
+}
+
+model OrganizationMember {
+  id                    String     @id @default(uuid())
+  userId                String
+  organizationId        String
+  userType              UserType
+  adminRole             AdminRole?
+  isDefaultOrganization Boolean    @default(false)
+
+  // Tokens
+  accessTokenCRMId        String?
+  refreshTokenCRMId       String?
+  accessTokenEXTENTIONId  String?
+  refreshTokenEXTENTIONId String?
+  accessTokenAPPId        String?
+  refreshTokenAPPId       String?
+
+  // Relations
+  user         User         @relation(fields: [userId], references: [id])
+  organization Organization @relation(fields: [organizationId], references: [id])
+
+  // Timestamps
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([userId, organizationId])
+  @@map("organization_members")
+}
+
+model UserOtp {
+  id            String    @id @default(uuid())
+  userId        String
+  appOtp        Int?
+  extensionOtp  Int?
+  crmOtp        Int?
+  otpExpireTime DateTime?
+  nextOtpTime   DateTime?
+
+  // Relations
+  user User @relation(fields: [userId], references: [id])
+
+  // Timestamps
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("users_otp")
+}
+
+// ======= ORGANIZATION AND DEPARTMENT MODELS =======
+model Organization {
+  id                      String  @id @default(uuid())
+  name                    String
+  description             String?
+  country                 String
+  memberCreationLimit     Int?
+  leadsCreationLimit      Int?
+  departmentCreationLimit Int?    @default(20)
+  adminCreationLimit      Int?
+
+  // Subdomain field - will be generated from org name in the API
+  subdomain String? @unique
+
+  orgImageUrl String?
+  orgImageKey String?
+
+  // Relations
+  createdBy    User                      @relation("CreatedBy", fields: [createdById], references: [id])
+  createdById  String
+  departments  Department[]
+  plans        Plan[]
+  customFields CustomField[]
+  subscription OrganizationSubscription?
+  members      OrganizationMember[]
+
+  // Metadata
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  isActive  Boolean  @default(true)
+  deleted   Boolean  @default(false)
+
+  @@unique([createdById])
+  @@map("organizations")
+}
+
+model Department {
+  id          String  @id @default(uuid())
+  name        String
+  description String?
+
+  // Relations
+  organization   Organization       @relation(fields: [organizationId], references: [id])
+  organizationId String
+  user           User               @relation(fields: [createdBy], references: [id])
+  createdBy      String
+  members        DepartmentMember[]
+  leads          Lead[]
+  quickReplies   QuickReply[]
+  tags           Tag[]
+  labels         Label[]
+  customFields   CustomField[]
+
+  // Metadata
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  isActive  Boolean  @default(true)
+  deleted   Boolean  @default(false)
+
+  @@map("departments")
+}
+
+model DepartmentMember {
+  id         String     @id @default(uuid())
+  workerRole WorkerRole
+
+  // Relations
+  user         User       @relation("UserDepartmentMember", fields: [userId], references: [id])
+  userId       String
+  department   Department @relation(fields: [departmentId], references: [id])
+  departmentId String
+  createdBy    User       @relation("CreatedByDepartmentMember", fields: [createdById], references: [id])
+  createdById  String
+
+  // Metadata
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  isActive  Boolean  @default(true)
+
+  @@unique([userId, departmentId])
+  @@map("department_members")
+}
+
+// ======= FEATURE AND PLAN MODELS =======
+model Plan {
+  id           String   @id @default(uuid())
+  name         String
+  description  String?
+  planType     PlanType
+  monthlyPrice Float // Price per member monthly
+  yearlyPrice  Float // Price per member yearly
+  isActive     Boolean  @default(true)
+  isPopular    Boolean  @default(false)
+
+  // Features Configuration - Now directly linked without Feature model
+  planFeatures PlanFeature[]
+
+  // Subscription Relations
+  orgSubscriptions OrganizationSubscription[]
+
+  // For Custom Plans
+  isCustomPlan  Boolean       @default(false)
+  organization  Organization? @relation(fields: [orgId], references: [id])
+  orgId         String? // Only set for custom plans
+  basedOnPlan   Plan?         @relation("CustomPlanSource", fields: [basedOnPlanId], references: [id])
+  basedOnPlanId String? // Reference to the standard plan it's based on
+  customPlans   Plan[]        @relation("CustomPlanSource")
+
+  // Plan History Relations
+  planChangesFrom SubscriptionPlanHistory[] @relation("FromPlan")
+  planChangesTo   SubscriptionPlanHistory[] @relation("ToPlan")
+
+  // Admin Relations
+  createdBy        Admin   @relation("PlanCreator", fields: [adminId], references: [id])
+  adminId          String
+  lastModifiedBy   Admin?  @relation("PlanModifier", fields: [lastModifiedById], references: [id])
+  lastModifiedById String?
+
+  // Metadata
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("plans")
+}
+
+model PlanFeature {
+  id          String       @id @default(uuid())
+  featureName String?
+  featureType FeatureType?
+
+  // Configuration
+  isEnabled Boolean @default(true) // For boolean features
+
+  // Relations
+  plan   Plan   @relation(fields: [planId], references: [id])
+  planId String
+
+  // Admin Relations
+  createdBy        Admin   @relation("PlanFeatureCreator", fields: [adminId], references: [id])
+  adminId          String
+  lastModifiedBy   Admin?  @relation("PlanFeatureModifier", fields: [lastModifiedById], references: [id])
+  lastModifiedById String?
+
+  // Metadata
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([planId, featureName])
+  @@map("plan_features")
+}
+
+// ======= CUSTOM FIELD MODELS =======
+model CustomField {
+  id              String          @id @default(uuid())
+  name            String
+  label           String
+  description     String?
+  fieldType       CustomFieldType
+  isRequired      Boolean         @default(false)
+  isActive        Boolean         @default(true)
+  order           Int
+  defaultValue    String? // Stored as JSON string
+  validationRules Json? // Validation rules as JSON
+
+  // Scoping
+  organization   Organization @relation(fields: [organizationId], references: [id])
+  organizationId String
+  department     Department   @relation(fields: [departmentId], references: [id])
+  departmentId   String
+  // feature        Feature      @relation(fields: [featureId], references: [id])
+  featureId      String
+
+  // Relations
+  //   options        CustomFieldOption[]
+  fieldValues CustomFieldValue[]
+
+  // Admin Relations
+  createdBy        Admin   @relation("CustomFieldCreator", fields: [adminId], references: [id])
+  adminId          String
+  lastModifiedBy   Admin?  @relation("CustomFieldModifier", fields: [lastModifiedById], references: [id])
+  lastModifiedById String?
+
+  // Metadata
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// model CustomFieldOption {
+//   id           String @id @default(uuid())
+//   label        String
+//   value        String
+//   order        Int
+
+//   // Relations
+//   customField   CustomField @relation(fields: [customFieldId], references: [id])
+//   customFieldId String
+
+//   // Metadata
+//   createdAt    DateTime @default(now())
+//   updatedAt    DateTime @updatedAt
+
+//   @@map("custom_field_options")
+// }
+
+model CustomFieldValue {
+  id         String @id @default(uuid())
+  value      String // Stored as JSON string
+  entityId   String // ID of the entity (lead, ticket, etc.)
+  entityType String // Type of entity ("lead", "ticket", etc.)
+
+  // Relations
+  customField   CustomField @relation(fields: [customFieldId], references: [id])
+  customFieldId String
+
+  // Metadata
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([customFieldId, entityId])
+  @@map("custom_field_values")
+}
+
+// ======= SUBSCRIPTION RELATED MODELS =======
+model OrganizationSubscription {
+  id             String       @id @default(uuid())
+  organizationId String       @unique
+  organization   Organization @relation(fields: [organizationId], references: [id])
+
+  // Plan Details
+  planId         String
+  plan           Plan         @relation(fields: [planId], references: [id])
+  memberCount    Int // Number of members subscribed
+  pricePerMember Float // Locked-in price per member
+  totalPrice     Float // Total subscription price (memberCount * pricePerMember)
+  billingCycle   BillingCycle // Current billing cycle
+
+  // Subscription Status
+  status          SubscriptionStatus @default(ACTIVE)
+  startDate       DateTime
+  endDate         DateTime
+  nextBillingDate DateTime
+
+  // Member Add-ons during subscription
+  memberAddOns MemberAddOn[]
+
+  // Plan History
+  planHistory SubscriptionPlanHistory[]
+
+  // Admin Tracking
+  createdBy        User    @relation("SubscriptionCreator", fields: [createdById], references: [id])
+  createdById      String
+  lastModifiedBy   Admin?  @relation("SubscriptionModifier", fields: [lastModifiedById], references: [id])
+  lastModifiedById String?
+
+  // Metadata
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("organization_subscriptions")
+}
+
+model MemberAddOn {
+  id             String                   @id @default(uuid())
+  subscriptionId String
+  subscription   OrganizationSubscription @relation(fields: [subscriptionId], references: [id])
+
+  membersAdded   Int // Number of members added
+  pricePerMember Float // Price per member for this add-on
+  totalPrice     Float // Total price for this add-on
+  startDate      DateTime // When these members were added
+  endDate        DateTime // When this add-on expires (usually subscription end date)
+
+  // Admin who processed the add-on
+  processedBy   Admin  @relation(fields: [processedById], references: [id])
+  processedById String
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("member_addons")
+}
+
+model SubscriptionPlanHistory {
+  id             String                   @id @default(uuid())
+  subscriptionId String
+  subscription   OrganizationSubscription @relation(fields: [subscriptionId], references: [id])
+
+  fromPlanId String
+  fromPlan   Plan   @relation("FromPlan", fields: [fromPlanId], references: [id])
+  toPlanId   String
+  toPlan     Plan   @relation("ToPlan", fields: [toPlanId], references: [id])
+
+  effectiveDate       DateTime
+  prorationAdjustment Float?
+
+  changedBy   Admin  @relation(fields: [changedById], references: [id])
+  changedById String
+
+  reason    String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("subscription_plan_history")
+}
+
+// ======= LEAD MANAGEMENT MODELS =======
+model Lead {
+  id           String           @id @default(uuid())
+  title        String?
+  phoneNumber  String
+  source       String?
+  status       LeadStatus       @default(NEW)
+  priority     Priority         @default(LOW)
+  creationType LeadCreationType
+
+  // Relations
+  department   Department @relation(fields: [departmentId], references: [id])
+  departmentId String
+  creator      User       @relation("CreatedBy", fields: [creatorId], references: [id])
+  creatorId    String
+  label        Label?     @relation(fields: [labelId], references: [id])
+  labelId      String?
+
+  // Related Entities
+  assignedMembers LeadAssignment[]
+  reminders       LeadReminder[]
+  tickets         LeadTicket[]
+  chat            LeadChat[]
+  activities      LeadActivity[]
+  tags            Tag[]
+  events          LeadEvent[]
+
+  // Metadata
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  deleted   Boolean  @default(false)
+
+  @@unique([phoneNumber, departmentId])
+  @@map("leads")
+}
+
+model LeadAssignment {
+  id                  String             @id @default(uuid())
+  assignmentType      LeadAssignmentType
+  unassignDescription String
+
+  // Relations
+  lead   Lead   @relation(fields: [leadId], references: [id])
+  leadId String
+  user   User   @relation(fields: [userId], references: [id])
+  userId String
+
+  assignedAt DateTime @default(now())
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+  isActive   Boolean  @default(true)
+
+  @@unique([leadId, userId])
+  @@map("lead_assignments")
+}
+
+model Label {
+  id          String  @id @default(uuid())
+  name        String
+  description String?
+  color       String // Hex color code
+
+  // Relations
+  department   Department @relation(fields: [departmentId], references: [id])
+  departmentId String
+  leads        Lead[]
+  createdBy    User       @relation(fields: [createdById], references: [id])
+  createdById  String
+
+  // Metadata
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  isActive  Boolean  @default(true)
+
+  @@unique([departmentId, name])
+  @@map("labels")
+}
+
+model Tag {
+  id          String  @id @default(uuid())
+  name        String
+  description String?
+  type        TagType
+
+  // Relations
+  department   Department @relation(fields: [departmentId], references: [id])
+  departmentId String
+  leads        Lead[]
+  chats        LeadChat[]
+  createdBy    User       @relation(fields: [createdById], references: [id])
+  createdById  String
+
+  // Metadata
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([departmentId, name, type])
+  @@map("tags")
+}
+
+// ======= COMMUNICATION AND ACTIVITY MODELS =======
+model LeadChat {
+  id           String   @id @default(uuid())
+  content      String
+  chatType     ChatType @default(TEXT)
+  isSave       Boolean  @default(false)
+  isSentByLead Boolean  @default(false)
+
+  // Media Fields
+  mediaUrl String?
+  mediaKey String?
+
+  // Relations
+  tags     Tag[]
+  lead     Lead   @relation(fields: [leadId], references: [id])
+  leadId   String
+  sender   User   @relation("ChatSender", fields: [senderId], references: [id])
+  senderId String
+
+  // Metadata
+  deliveredAt DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@map("lead_chats")
+}
+
+model QuickReply {
+  id      String @id @default(uuid())
+  name    String
+  content String
+  order   Int
+
+  // Relations
+  department   Department        @relation(fields: [departmentId], references: [id])
+  departmentId String
+  createdBy    User              @relation(fields: [createdById], references: [id])
+  createdById  String
+  media        QuickReplyMedia[]
+
+  // Metadata
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  deleted   Boolean  @default(false)
+
+  @@unique([departmentId, name])
+  @@map("quick_replies")
+}
+
+model QuickReplyMedia {
+  id        String    @id @default(uuid())
+  mediaUrl  String
+  mediaKey  String
+  mediaType MediaType
+  order     Int
+
+  // Relations
+  quickReply   QuickReply @relation(fields: [quickReplyId], references: [id])
+  quickReplyId String
+
+  // Metadata
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("quick_reply_media")
+}
+
+// ======= EVENT AND REMINDER MODELS =======
+model LeadEvent {
+  id          String      @id @default(uuid())
+  title       String?
+  description String?
+  startDate   DateTime?
+  endDate     DateTime?
+  location    String?
+  eventType   EventType
+  status      EventStatus @default(SCHEDULED)
+
+  // Relations
+  lead        Lead   @relation(fields: [leadId], references: [id])
+  leadId      String
+  createdBy   User   @relation(fields: [createdById], references: [id])
+  createdById String
+
+  // Metadata
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("lead_events")
+}
+
+model LeadReminder {
+  id          String         @id @default(uuid())
+  title       String?
+  description String?
+  remindAt    DateTime
+  status      ReminderStatus @default(PENDING)
+
+  // Relations
+  lead        Lead   @relation(fields: [leadId], references: [id])
+  leadId      String
+  createdBy   User   @relation(fields: [createdById], references: [id])
+  createdById String
+
+  // Metadata
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  deleted   Boolean  @default(false)
+
+  @@map("lead_reminders")
+}
+
+// ======= TICKET AND ACTIVITY MODELS =======
+model LeadTicket {
+  id          String       @id @default(uuid())
+  subject     String
+  description String?
+  priority    Priority     @default(LOW)
+  status      TicketStatus @default(OPEN)
+  dueDate     DateTime?
+
+  // Relations
+  lead         Lead   @relation(fields: [leadId], references: [id])
+  leadId       String
+  createdBy    User   @relation("TicketCreator", fields: [createdById], references: [id])
+  createdById  String
+  assignedTo   User   @relation("TicketAssignee", fields: [assignedToId], references: [id])
+  assignedToId String
+
+  // Metadata
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  closedAt  DateTime?
+  deleted   Boolean   @default(false)
+
+  @@map("lead_tickets")
+}
+
+model LeadActivity {
+  id          String       @id @default(uuid())
+  type        ActivityType
+  description String
+
+  // Relations
+  lead          Lead   @relation(fields: [leadId], references: [id])
+  leadId        String
+  performedBy   User   @relation(fields: [performedById], references: [id])
+  performedById String
+
+  createdAt DateTime @default(now())
+
+  @@map("lead_activities")
+}
+
+// model User {
+//   id                  String     @id @default(uuid())
+//   email               String     @unique
+//   password            String?
+//   firstName           String
+//   lastName            String
+//   countryCode         String?
+//   phoneNumber         String?
+//   userType            UserType
+//   adminRole           AdminRole?
+//   profileImageUrl     String?
+//   profileImageKey     String?
+//   status              UserStatus @default(ACTIVE)
+//   emailVerified       Boolean    @default(false)
+//   phoneNumberVerified Boolean    @default(false)
+//   otp                 Int?
+//   otpExpireTime       DateTime?
+//   orgRegistered       Boolean    @default(false)
+
+//   // Tokens
+//   accessTokenCRMId         String?
+//   refreshTokenCRMId        String?
+//   accessTokenEXTENTIONId   String?
+//   refreshTokenEXTENTIONId  String?
+//   accessTokenAPPId         String?
+//   refreshTokenAPPId        String?
+
+//   // Email Verification
+//   emailVerifyToken         String?
+//   emailVerifyTokenExpTime  DateTime?
+//   nextVerifyEmailTime      DateTime?
+
+//   // Password Reset
+//   passwordResetToken        String?
+//   passwordResetTokenExpTime DateTime?
+//   nextPasswordResetEmailTime DateTime?
+
+//   // Preferences
+//   language    Language   @default(EN)
+//   timeZone    TZ        @default(AmericaNew_York)
+//   fontFamily  FontFamily @default(SAN_SERIF)
+
+//   // Relations
+//   createdOrgs Organization[] @relation("CreatedBy")
+//   departments Department[]
+//   departmentRoles DepartmentMember[] @relation("UserDepartmentMember")
+//   createdDepartmentMembers DepartmentMember[] @relation("CreatedByDepartmentMember")
+
+//   // Lead Related Relations
+//   leadAssignments LeadAssignment[]
+//   createdLeads    Lead[]           @relation("CreatedBy")
+//   leadReminders   LeadReminder[]
+//   createdTickets  LeadTicket[]     @relation("TicketCreator")
+//   assignedTickets LeadTicket[]     @relation("TicketAssignee")
+//   sentChats       LeadChat[]       @relation("ChatSender")
+//   quickReplies    QuickReply[]
+//   leadActivities  LeadActivity[]
+//   createdTags     Tag[]
+//   createdLabels   Label[]
+//   createdEvents   LeadEvent[]
+
+//   // Timestamps
+//   createdAt   DateTime  @default(now())
+//   updatedAt   DateTime  @updatedAt
+//   lastLoginAt DateTime?
+//   deleted     Boolean   @default(false)
+
+//   @@map("users")
+// }

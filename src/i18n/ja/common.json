@@ -1,0 +1,15 @@
+{
+  "USER_CREATED_SUCCESSFULLY": "ユーザーが正常に作成されました。",
+  "updated": "製品が正常に更新されました。",
+  "deleted": "製品が正常に削除されました。",
+  "not_found": "製品が見つかりません。",
+  "NAME_MUST_BE_STRING": "名前は文字列でなければなりません。",
+  "NAME_MUST_BE_DEFINED": "名前が定義されている必要があります。",
+  "EMAIL_REQUIRED": "メールアドレスは必須です。",
+  "EMAIL_DEFINED": "メールアドレスを指定してください。",
+  "EMAIL_INVALID": "メールアドレスが無効です。",
+  "NAME_REQUIRED": "名前は必須です。",
+  "NAME_DEFINED": "名前を指定してください。",
+  "NAME_INVALID": "名前は文字列でなければなりません。",
+  "EMAIL_ALREADY_EXISTS": "メールはすでに存在しています"
+}
