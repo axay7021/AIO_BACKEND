@@ -103,7 +103,6 @@ amazing backers. If you'd like to join them, please
 
 ## Stay in touch
 
-- Author - [Kamil Myśliwiec](https://twitter.com/kammysliwiec)
 - Website - [https://nestjs.com](https://nestjs.com/)
 - Twitter - [@nestframework](https://twitter.com/nestframework)
 
@@ -111,19 +110,42 @@ amazing backers. If you'd like to join them, please
 
 Nest is [MIT licensed](https://github.com/nestjs/nest/blob/master/LICENSE).
 
-Nest-TypeScript-Prisma/ ├── dist/ # Compiled output folder (auto-generated) ├── node_modules/ #
-Dependency folder (auto-generated) ├── src/ # Main application source code │ ├── app/ #
-Feature-specific modules │ │ ├── admin/ # Admin-specific features │ │ └── userManagement/ # Admin
-and user management module │ ├── common/ # Shared resources and utilities │ │ ├── constants/ #
-Static constants │ │ ├── filters/ # Custom request/response filters │ │ ├── interfaces/ # TypeScript
-interfaces │ │ └── services/ # Shared services │ ├── i18n/ # Internationalization support │ │ ├──
-en/ # English language files │ │ ├── es/ # Spanish language files │ │ ├── fr/ # French language
-files │ │ └── ja/ # Japanese language files │ ├── prisma/ # Prisma schema and migrations │ │ ├──
-schema.prisma # Prisma schema definition │ │ └── migrations/ # Prisma migration files │ ├──
-app.controller.spec.ts # Sample test for the main controller │ ├── app.module.ts # Root application
-module │ └── main.ts # Application entry point ├── test/ # Testing folder ├── uploads/ # File upload
-directory ├── .env # Environment variables ├── .eslintrc.js # ESLint configuration ├── .gitignore #
-Git ignore rules ├── .prettierrc # Prettier configuration ├── README.md # Project documentation ├──
-nest-cli.json # Nest CLI configuration ├── package.json # Project dependencies and scripts ├──
-package-lock.json # Lockfile for dependencies ├── tsconfig.json # TypeScript configuration └──
-tsconfig.build.json # TypeScript build configuration
+## Project Structure
+
+```
+Nest-TypeScript-Prisma/
+├── dist/                # Compiled output folder (auto-generated)
+├── node_modules/        # Dependency folder (auto-generated)
+├── src/                 # Main application source code
+│   ├── app/             # Feature-specific modules
+│   │   ├── admin/       # Admin-specific features
+│   │   └── userManagement/ # Admin and user management module
+│   ├── common/          # Shared resources and utilities
+│   │   ├── constants/   # Static constants
+│   │   ├── filters/     # Custom request/response filters
+│   │   ├── interfaces/  # TypeScript interfaces
+│   │   └── services/    # Shared services
+│   ├── i18n/            # Internationalization support
+│   │   ├── en/          # English language files
+│   │   ├── es/          # Spanish language files
+│   │   ├── fr/          # French language files
+│   │   └── ja/          # Japanese language files
+│   ├── prisma/          # Prisma schema and migrations
+│   │   ├── schema.prisma # Prisma schema definition
+│   │   └── migrations/  # Prisma migration files
+│   ├── app.controller.spec.ts # Sample test for the main controller
+│   ├── app.module.ts    # Root application module
+│   └── main.ts          # Application entry point
+├── test/                # Testing folder
+├── uploads/             # File upload directory
+├── .env                 # Environment variables
+├── .eslintrc.js         # ESLint configuration
+├── .gitignore           # Git ignore rules
+├── .prettierrc          # Prettier configuration
+├── README.md            # Project documentation
+├── nest-cli.json        # Nest CLI configuration
+├── package.json         # Project dependencies and scripts
+├── package-lock.json    # Lockfile for dependencies
+├── tsconfig.json        # TypeScript configuration
+└── tsconfig.build.json  # TypeScript build configuration
+```
