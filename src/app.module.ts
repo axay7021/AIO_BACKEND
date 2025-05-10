@@ -8,7 +8,6 @@ import { MulterConfig } from './config/multer.config';
 import { adminModule } from './app/admin/admin.module';
 
 // import { LoggerMiddleware } from './common/middleware/logger.middleware';
-import { DepartmentModule } from './app/department/department.module';
 import { ConfigModule } from '@nestjs/config';
 console.log({
   envFilePath: `.env.${process.env.NODE_ENV}`,
@@ -22,7 +21,6 @@ console.log({
     i18nConfig,
     MulterModule.register(MulterConfig),
     adminModule,
-    DepartmentModule,
   ],
   providers: [ResponseService, LoggingService],
 })

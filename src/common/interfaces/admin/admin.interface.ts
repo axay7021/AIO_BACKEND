@@ -87,21 +87,14 @@ export interface ProfileDetailResponse {
   email: string;
   firstName: string;
   lastName: string;
-  phoneNumber: string;
   profileImage: string;
-  planId: string;
-  planType: string;
-  userType: string;
-  platform: string;
 }
 
 export interface EditProfileResponse {
   userId: string;
   firstName: string;
   lastName: string;
-  phoneNumber: string;
   profileImage: string;
-  countryCode: string;
 }
 
 export interface OrganizationDetailResponse {

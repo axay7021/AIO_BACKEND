@@ -15,7 +15,6 @@ model User {
   nickname       String?
   bio           String?
   profilePicture String?
-  email          String    @unique
   isBlocked      Boolean   @default(false)
   isBanned       Boolean   @default(false)
   createdAt      DateTime  @default(now())
@@ -29,36 +28,13 @@ model User {
   reportedBy     Report[]  @relation("ReportedUser")
   sharedItems    SharedItem[] @relation("SharedBy")
   sharedWith     SharedItem[] @relation("SharedWith")
-
-  deleteAt   DateTime?
-  isDeleted  Boolean   @default(false)
 }
 
 model Admin {
   id        String   @id @default(uuid())
-  firstName      String?
-  lastName   String?
-
-  profileImageUrl String?
-  profileImageKey String?
-
   email     String   @unique
   password  String
- 
-  isEmailVerified Boolean  @default(false)
-  otp       Int?
-  otpExpireTime DateTime?
-  nextOtpTime  DateTime?
-  isPasswordReset Boolean  @default(false)
-
   createdAt DateTime @default(now())
-  updatedAt DateTime @default(now())
-
-  isDeleted Boolean  @default(false)
-  deletedAt DateTime?
-
-  isBlocked Boolean  @default(false)
-  isSuper   Boolean  @default(false)
 }
 
 model Note {
@@ -75,9 +51,6 @@ model Note {
   user        User     @relation(fields: [userId], references: [id])
   folder      Folder?  @relation(fields: [folderId], references: [id])
   sharedItems SharedItem[]
-
-  deleteAt   DateTime?
-  isDeleted  Boolean   @default(false)
 }
 
 model Folder {
@@ -88,9 +61,6 @@ model Folder {
   notes    Note[]
   parent   Folder? @relation("FolderToFolder", fields: [parentId], references: [id])
   children Folder[] @relation("FolderToFolder")
-
-  deleteAt   DateTime?
-  isDeleted  Boolean   @default(false)
 }
 
 model Todo {
@@ -107,9 +77,6 @@ model Todo {
   user        User     @relation(fields: [userId], references: [id])
   list        TodoList @relation(fields: [listId], references: [id])
   sharedItems SharedItem[]
-
-  deleteAt   DateTime?
-  isDeleted  Boolean   @default(false)
 }
 
 model TodoList {
@@ -117,9 +84,6 @@ model TodoList {
   name   String
   userId String
   todos  Todo[]
-
-  deleteAt   DateTime?
-  isDeleted  Boolean   @default(false)
 }
 
 model Event {
@@ -150,9 +114,6 @@ model Message {
   group       Group?    @relation(fields: [groupId], references: [id])
   community   Community? @relation(fields: [communityId], references: [id])
   channel     Channel?  @relation(fields: [channelId], references: [id])
-
-  deleteAt   DateTime?
-  isDeleted  Boolean   @default(false)
 }
 
 model Group {
@@ -164,9 +125,6 @@ model Group {
   updatedAt   DateTime  @updatedAt
   createdBy   User      @relation(fields: [createdById], references: [id])
   messages    Message[]
-
-  deleteAt   DateTime?
-  isDeleted  Boolean   @default(false)
 }
 
 model Community {
@@ -190,9 +148,6 @@ model Channel {
   updatedAt   DateTime  @updatedAt
   community   Community @relation(fields: [communityId], references: [id])
   messages    Message[]
-
-  deleteAt   DateTime?
-  isDeleted  Boolean   @default(false)
 }
 
 model Report {
@@ -204,9 +159,6 @@ model Report {
   createdAt      DateTime @default(now())
   reporter       User     @relation("ReportedBy", fields: [reporterId], references: [id])
   reportedUser   User     @relation("ReportedUser", fields: [reportedUserId], references: [id])
-
-  deleteAt   DateTime?
-  isDeleted  Boolean   @default(false)
 }
 
 model SharedItem {
@@ -219,10 +171,7 @@ model SharedItem {
   createdAt    DateTime @default(now())
   owner        User     @relation("SharedBy", fields: [ownerId], references: [id])
   sharedWith   User     @relation("SharedWith", fields: [sharedWithId], references: [id])
-  note         Note?    @relation(fields: [itemId], references: [id], map: "SharedItem_itemId_note_fkey")
-  todo         Todo?    @relation(fields: [itemId], references: [id], map: "SharedItem_itemId_todo_fkey")
-  event        Event?   @relation(fields: [itemId], references: [id], map: "SharedItem_itemId_event_fkey")
-
-  deleteAt   DateTime?
-  isDeleted  Boolean   @default(false)
+  note         Note?    @relation(fields: [itemId], references: [id])
+  todo         Todo?    @relation(fields: [itemId], references: [id])
+  event        Event?   @relation(fields: [itemId], references: [id])
 }
