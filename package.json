@@ -26,7 +26,7 @@
     "prepare": "husky install",
     "prismadb": "prisma generate",
     "prismamigrate": "prisma migrate dev",
-    "prismamigrate:local": "NODE_ENV=development npx prisma migrate dev",
+    "prismamigrate:local": "dotenv -e .env.development -- npx prisma db push",
     "seed": "ts-node src/prisma/seed.ts",
     "seed:prod": "node dist/prisma/seed.js"
   },

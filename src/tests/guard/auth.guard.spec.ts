@@ -3,12 +3,10 @@ import { ExecutionContext, UnauthorizedException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { AuthGuard } from '../../guard/auth/auth.guard';
 import { PrismaService } from '../../common/services/prisma.service';
-import { AdminRole, UserStatus, UserType } from '@prisma/client';
 
 describe('AuthGuard', () => {
   let guard: AuthGuard;
   let jwtService: JwtService;
-  let prismaService: PrismaService;
 
   // Mock data
   const mockToken = 'valid.jwt.token';
@@ -30,8 +28,6 @@ describe('AuthGuard', () => {
     id: 'member123',
     userId: mockUserId,
     organizationId: mockOrgId,
-    userType: UserType.WORKER,
-    adminRole: AdminRole.ADMIN,
     isDefaultOrganization: false,
     accessTokenCRMId: mockAccessTokenNonce,
     refreshTokenCRMId: 'refresh123',
@@ -41,9 +37,6 @@ describe('AuthGuard', () => {
     refreshTokenAPPId: 'appr123',
     createdAt: new Date(),
     updatedAt: new Date(),
-    user: {
-      status: UserStatus.ACTIVE,
-    },
     organization: {
       isActive: true,
       deleted: false,
@@ -74,7 +67,6 @@ describe('AuthGuard', () => {
 
     guard = module.get<AuthGuard>(AuthGuard);
     jwtService = module.get<JwtService>(JwtService);
-    prismaService = module.get<PrismaService>(PrismaService);
 
     // Setup environment variables
     process.env.WEB_ACCESS_SECRET = 'web-secret';
@@ -94,9 +86,6 @@ describe('AuthGuard', () => {
 
       (jwtService.decode as jest.Mock).mockReturnValue(mockDecodedToken);
       (jwtService.verifyAsync as jest.Mock).mockResolvedValue(mockDecodedToken);
-      (prismaService.organizationMember.findUnique as jest.Mock).mockResolvedValue(
-        baseMockOrganizationMember,
-      );
 
       // Act
       const result = await guard.canActivate(mockContext);
@@ -122,9 +111,6 @@ describe('AuthGuard', () => {
 
       (jwtService.decode as jest.Mock).mockReturnValue(mockDecodedToken);
       (jwtService.verifyAsync as jest.Mock).mockResolvedValue(mockDecodedToken);
-      (prismaService.organizationMember.findUnique as jest.Mock).mockResolvedValue(
-        mockOrgMemberForApp,
-      );
 
       // Act
       const result = await guard.canActivate(mockContext);
@@ -149,9 +135,6 @@ describe('AuthGuard', () => {
 
       (jwtService.decode as jest.Mock).mockReturnValue(mockDecodedToken);
       (jwtService.verifyAsync as jest.Mock).mockResolvedValue(mockDecodedToken);
-      (prismaService.organizationMember.findUnique as jest.Mock).mockResolvedValue(
-        mockOrgMemberForExtension,
-      );
 
       // Act
       const result = await guard.canActivate(mockContext);
@@ -172,7 +155,7 @@ describe('AuthGuard', () => {
 
       // Act & Assert
       await expect(guard.canActivate(mockContext)).rejects.toThrow(
-        new UnauthorizedException('TOKEN_REQUIRED'),
+        new UnauthorizedException('TOKEN_REQUIRED')
       );
     });
 
@@ -189,7 +172,7 @@ describe('AuthGuard', () => {
 
       // Act & Assert
       await expect(guard.canActivate(mockContext)).rejects.toThrow(
-        new UnauthorizedException('INVALID_PLATFORM'),
+        new UnauthorizedException('INVALID_PLATFORM')
       );
     });
 
@@ -202,22 +185,12 @@ describe('AuthGuard', () => {
         accessTokenNonce: mockAccessTokenNonce,
       };
 
-      const mockInactiveUser = {
-        ...baseMockOrganizationMember,
-        user: {
-          status: UserStatus.INACTIVE,
-        },
-      };
-
       (jwtService.decode as jest.Mock).mockReturnValue(mockDecodedToken);
       (jwtService.verifyAsync as jest.Mock).mockResolvedValue(mockDecodedToken);
-      (prismaService.organizationMember.findUnique as jest.Mock).mockResolvedValue(
-        mockInactiveUser,
-      );
 
       // Act & Assert
       await expect(guard.canActivate(mockContext)).rejects.toThrow(
-        new UnauthorizedException('USER_ACCOUNT_NOT_ACTIVE'),
+        new UnauthorizedException('USER_ACCOUNT_NOT_ACTIVE')
       );
     });
 
@@ -232,13 +205,10 @@ describe('AuthGuard', () => {
 
       (jwtService.decode as jest.Mock).mockReturnValue(mockDecodedToken);
       (jwtService.verifyAsync as jest.Mock).mockResolvedValue(mockDecodedToken);
-      (prismaService.organizationMember.findUnique as jest.Mock).mockResolvedValue(
-        baseMockOrganizationMember,
-      );
 
       // Act & Assert
       await expect(guard.canActivate(mockContext)).rejects.toThrow(
-        new UnauthorizedException('ACCESS_TOKEN_NONCE_MISMATCH'),
+        new UnauthorizedException('ACCESS_TOKEN_NONCE_MISMATCH')
       );
     });
   });

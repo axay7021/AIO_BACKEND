@@ -25,7 +25,6 @@ export class AdminSeeder implements Seeder {
       });
 
       if (existingAdmin) {
-        console.log('Admin already exists, skipping seed...');
         return;
       }
 
@@ -36,19 +35,17 @@ export class AdminSeeder implements Seeder {
         password: hashedPassword,
         firstName: adminFirstName,
         lastName: adminLastName,
-        role: 'SUPER_ADMIN',
-        isActive: true,
       };
 
       const admin: Admin = await this.prisma.admin.create({
         data: adminData,
       });
 
-      console.log('Admin seeded successfully:', admin.email);
+      // console.log('Admin seeded successfully:', admin.email);
     } catch (error) {
       console.error(
         'Error seeding admin:',
-        error instanceof Error ? error.message : 'Unknown error',
+        error instanceof Error ? error.message : 'Unknown error'
       );
       throw error;
     }

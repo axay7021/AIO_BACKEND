@@ -27,9 +27,6 @@ import { VerifyOtpDto } from './dto/otpVerify.dto';
 import { HttpStatus } from '@common/constants/httpStatus.constant';
 import { ResendOtpDto } from './dto/resendOtp.dto';
 import { CompleteProfileDto } from './dto/completeProfile.dto';
-import {
-  User,
-} from '@prisma/client';
 import { Platform } from '@common/constants/prisma.constant';
 import { CLOUDINARY_FOLDERS, CloudinaryService } from '@common/services/clodinary.service';
 import { EditProfileDto } from './dto/editProfile.dto';
@@ -187,7 +184,6 @@ export class AdminService {
     // Generate token
     const token = await this.jwtService.generateToken(user.id);
 
-    console.log({ token });
     return {
       token,
       _statusCode: HttpStatus.ACCEPTED,
@@ -220,10 +216,7 @@ export class AdminService {
     }
 
     const currentTime = new Date();
-    if (
-      user?.nextOtpTime &&
-      currentTime < user.nextOtpTime
-    ) {
+    if (user?.nextOtpTime && currentTime < user.nextOtpTime) {
       // Perform IP and Email blocking concurrently
       this.ipBlockingGuard.trackFailedAttempt(req.ip);
       this.emailBlockingGuard.trackFailedAttempt(body.email);
@@ -297,7 +290,7 @@ export class AdminService {
   }
 
   async getProfileDetail(user: RequestUser): Promise<ProfileDetailResponse> {
-    const { userId, organizationId, platform } = user;
+    const { userId } = user;
 
     const userDetails = await this.prisma.admin.findFirst({
       where: {
@@ -331,7 +324,7 @@ export class AdminService {
     body: EditProfileDto,
     profileImage: Express.Multer.File
   ): Promise<EditProfileResponse> {
-    const { firstName, lastName, countryCode, phoneNumber } = body;
+    const { firstName, lastName } = body;
     const { userId } = user;
 
     const userDetails = await this.prisma.admin.findUnique({
@@ -346,15 +339,13 @@ export class AdminService {
     let profileImageUrl = userDetails.profileImageUrl;
 
     if (profileImage) {
-      console.log({ profileImage: profileImage.path });
       const uploadedImage = await this.cloudinaryService.uploadImage(
         profileImage.path,
         CLOUDINARY_FOLDERS.USER_PROFILE
       );
 
       if (profileImageKey) {
-        const deletedImage = await this.cloudinaryService.deleteImage(profileImageKey);
-        console.log({ deletedImage });
+        await this.cloudinaryService.deleteImage(profileImageKey);
       }
 
       profileImageKey = uploadedImage.public_id;
@@ -391,7 +382,7 @@ export class AdminService {
     // Check if user is valid
     const user = await this.prisma.admin.findUnique({
       where: {
-        id: userId
+        id: userId,
       },
     });
 
@@ -405,8 +396,6 @@ export class AdminService {
     if (!platformColumn) {
       throw new BadRequestException('INVALID_PLATFORM');
     }
-
-    console.log('user[platformColumn]', user[platformColumn], accessTokenColumn);
 
     // Check if refresh token nonce is valid
     if (refreshTokenNonceFromPayload !== user[platformColumn]) {
@@ -463,7 +452,6 @@ export class AdminService {
     };
   }
 
-
   // Helper method to get the platform-specific column name
   private getPlatformColumn(platform: Platform): string | null {
     switch (platform) {
@@ -505,13 +493,11 @@ export class AdminService {
       });
 
       const payload = ticket.getPayload();
-      console.log('Google token payload:', payload);
 
       return payload;
     } catch (error) {
       // Handle specific error scenarios
       const errorMessage = error.message.toLowerCase();
-      console.log({ errorMessage: error.message });
       if (
         errorMessage.includes('invalid_grant') ||
         errorMessage.includes('code was already redeemed')
@@ -533,12 +519,11 @@ export class AdminService {
       if (errorMessage.includes('audience mismatch')) {
         throw new UnauthorizedException('INVALID_TOKEN_AUDIENCE');
       }
-      console.log('error: ' + errorMessage);
       throw new UnauthorizedException('GOOGLE_AUTH_ERROR');
     }
   }
 
-  async validateUser(email: string, password: string, req: ECoreReq): Promise<any> {
+  async validateUser(email: string, password: string, req: ECoreReq): Promise<unknown> {
     const user = await this.prisma.admin.findUnique({
       where: {
         email,

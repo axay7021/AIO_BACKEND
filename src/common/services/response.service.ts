@@ -20,11 +20,10 @@ export class ResponseService {
     res: ECoreRes,
     msg: string,
     statusCode: number,
-    data?: object,
+    data?: object
   ): Promise<ECoreRes> {
     const headers: CustomHeaders = req.headers as ECoreReqHeader;
     const language: SupportedLanguages = headers.language ? headers.language : 'en'; //-
-    console.log('Data', data);
     // Format the timestamp consistently
     const timestamp = new Date().toUTCString();
     // console.log('req===>', req);//-
@@ -50,7 +49,7 @@ export class ResponseService {
     res: ECoreRes,
     msg: string,
     data: object,
-    statusCode: number,
+    statusCode: number
   ): Promise<ECoreRes> {
     try {
       const headers: CustomHeaders = req.headers as ECoreReqHeader;
@@ -58,8 +57,6 @@ export class ResponseService {
       if (typeof msg === 'string') {
         msg = await this.translateMessage(msg, language);
       }
-      console.log('message==>', msg);
-      console.log('language==>', language);
 
       const response: SuccessResponse = {
         success: true,
@@ -70,20 +67,20 @@ export class ResponseService {
 
       return res.status(statusCode).json(response);
     } catch (error) {
-      console.log(`\nsuccess error ->> `, error);
+      // console.log(`\nsuccess error ->> `, error);
     }
   }
 
   async translateMessage(key: string, language: string): Promise<string> {
     try {
-      console.log('Key==>', key);
+      // console.log('Key==>', key);
       const message = this.i18n.translate(`common.${key}`, {
         lang: language,
       });
       return message;
     } catch (error) {
       this.logger.warn(`Translation not found for key: ${key}, language: ${language}`);
-      console.log('error==>', error);
+      // console.log('error==>', error);
       return key; // Fallback to key if translation not found
     }
   }

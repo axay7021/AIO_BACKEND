@@ -9,9 +9,7 @@ import { adminModule } from './app/admin/admin.module';
 
 // import { LoggerMiddleware } from './common/middleware/logger.middleware';
 import { ConfigModule } from '@nestjs/config';
-console.log({
-  envFilePath: `.env.${process.env.NODE_ENV}`,
-});
+
 @Module({
   imports: [
     ConfigModule.forRoot({

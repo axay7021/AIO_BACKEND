@@ -42,7 +42,7 @@ export class EmailService {
 
   async sendOtpToMail(toMail: string, data: mailData): Promise<boolean> {
     try {
-      console.log('data=====>', toMail, data);
+      // console.log('data=====>', toMail, data);
       const getPath = path.join(__dirname, '../../../../html');
       const templatePath = path.join(getPath, 'sendotp.html');
       const otp = data.otp;
@@ -60,9 +60,7 @@ export class EmailService {
       };
 
       // Send email using Nodemailer
-      const info = await this.transporter.sendMail(emailPayload);
-
-      console.log('Email sent: ', info.response);
+      await this.transporter.sendMail(emailPayload);
 
       return true;
     } catch (error) {

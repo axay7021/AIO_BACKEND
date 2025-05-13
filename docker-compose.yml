@@ -1,0 +1,56 @@
+version: '3.8'
+services:
+  postgres_db:
+    image: postgres:15
+    container_name: postgres_db
+    restart: always
+    environment:
+      POSTGRES_DB: postgres
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - '5432:5432'
+    networks:
+      - prisma-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d postgres"]
+      interval: 5s
+      timeout: 2s
+      retries: 20
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - '3000:5001'
+    depends_on:
+      postgres_db:
+        condition: service_healthy
+    env_file:
+      - .env.development
+    networks:
+      - prisma-network
+
+  app-production:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - '4000:5001'
+    depends_on:
+      postgres_db:
+        condition: service_healthy
+    env_file:
+      - .env.production
+    networks:
+      - prisma-network
+
+networks:
+  prisma-network:
+    name: prisma-network
+
+volumes:
+  postgres_data:

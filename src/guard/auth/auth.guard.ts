@@ -7,7 +7,7 @@ import { ECoreReq } from '@common/interfaces/request.interface';
 export class AuthGuard implements CanActivate {
   constructor(
     private jwtService: JwtService,
-    private prismaService: PrismaService,
+    private prismaService: PrismaService
   ) {}
 
   private getSecretByPlatform(platform: string): string {
@@ -57,75 +57,12 @@ export class AuthGuard implements CanActivate {
         throw new UnauthorizedException('TOKEN_MISSING_REQUIRED_FIELDS');
       }
 
-      console.log('payload', payload);
-
-      // Verify token validity using the database
-      const organizationMember = await this.prismaService.organizationMember.findUnique({
-        where: {
-          userId_organizationId: {
-            userId: payload.userId,
-            organizationId: payload.organizationId,
-          },
-        },
-        select: {
-          id: true,
-          userType: true,
-          adminRole: true,
-          accessTokenCRMId: true,
-          accessTokenEXTENTIONId: true,
-          accessTokenAPPId: true,
-          user: {
-            select: {
-              status: true,
-            },
-          },
-          organization: {
-            select: {
-              isActive: true,
-              deleted: true,
-            },
-          },
-        },
-      });
-
-      if (!organizationMember) {
-        throw new UnauthorizedException('USER_NOT_A_MEMBER_OF_THIS_ORGANIZATION');
-      }
-
-      // Check user status
-      if (organizationMember.user.status !== 'ACTIVE') {
-        throw new UnauthorizedException('USER_ACCOUNT_NOT_ACTIVE');
-      }
-
-      // Check organization status
-      if (!organizationMember.organization.isActive || organizationMember.organization.deleted) {
-        throw new UnauthorizedException('ORGANIZATION_NOT_ACTIVE');
-      }
-
-      // Verify token nonce matches stored nonce in database
-      let tokenMatches = false;
-      switch (platform) {
-        case 'WEBSITE':
-          tokenMatches = payload.accessTokenNonce === organizationMember.accessTokenCRMId;
-          break;
-        case 'EXTENSION':
-          tokenMatches = payload.accessTokenNonce === organizationMember.accessTokenEXTENTIONId;
-          break;
-        case 'APP':
-          tokenMatches = payload.accessTokenNonce === organizationMember.accessTokenAPPId;
-          break;
-      }
-
-      if (!tokenMatches) {
-        throw new UnauthorizedException('ACCESS_TOKEN_NONCE_MISMATCH');
-      }
+      // console.log('payload', payload);
 
       // Attach user and organization data to request
       request.user = {
         userId: payload.userId,
         organizationId: payload.organizationId,
-        userType: organizationMember.userType,
-        adminRole: organizationMember.adminRole,
         platform: platform,
       };
 

@@ -18,7 +18,7 @@ interface JwtPayload {
 export class SecurityTokenGuard implements CanActivate {
   constructor(
     private jwtService: JwtService,
-    private prisma: PrismaService,
+    private prisma: PrismaService
   ) {}
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
@@ -43,33 +43,16 @@ export class SecurityTokenGuard implements CanActivate {
       const user = await this.prisma.user.findUnique({
         where: {
           id: payload.id,
-          deleted: false,
+          isDeleted: false,
         },
         select: {
           id: true,
           email: true,
-          emailVerified: true,
-          authProvider: true,
-          organizationMembers: {
-            where: {
-              organization: {
-                isActive: true,
-              },
-            },
-            select: {
-              organizationId: true,
-            },
-          },
         },
       });
 
       if (!user) {
         throw new BadRequestException('USER_NOT_FOUND');
-      }
-
-      // Check if user has verified email
-      if (!user.emailVerified) {
-        throw new BadRequestException('EMAIL_VERIFICATION_PENDING');
       }
 
       request.userId = user.id;

@@ -15,7 +15,7 @@ interface ValidationErrorMessage {
 export class ValidationExceptionFilter implements ExceptionFilter {
   constructor(
     private readonly i18n: I18nService,
-    private readonly responseService: ResponseService,
+    private readonly responseService: ResponseService
   ) {}
 
   async catch(exception: HttpException, host: ArgumentsHost): Promise<ECoreRes> {
@@ -23,11 +23,10 @@ export class ValidationExceptionFilter implements ExceptionFilter {
     const response = ctx.getResponse();
     const request = ctx.getRequest();
     const status = exception.getStatus();
-    const lang = (request.headers.language as string) || 'en';
+    // const lang = (request.headers.language as string) || 'en';
 
     // Type cast the error response
     const errorResponse = exception.getResponse() as ValidationErrorMessage;
-    console.log({ errorResponse });
     // Handle message array or string
     let message: string;
     if (Array.isArray(errorResponse.message)) {
@@ -39,18 +38,15 @@ export class ValidationExceptionFilter implements ExceptionFilter {
     // return data if available
     const data = errorResponse?.data ?? null;
 
-    console.log(data);
-
     try {
       return this.responseService.error(request, response, message, status, data);
     } catch (error) {
-      console.error('Error in ValidationExceptionFilter:', error);
       return this.responseService.error(
         request,
         response,
         error instanceof Error ? error.message : 'Unknown error occurred',
         status,
-        data,
+        data
       );
     }
   }

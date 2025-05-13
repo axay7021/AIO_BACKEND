@@ -1,10 +1,5 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import {
-  ECoreReq,
-  ECoreReqAdmin,
-  ECoreReqHeader,
-  ECoreRes,
-} from 'src/common/interfaces/request.interface';
+import { ECoreReqAdmin, ECoreReqHeader, ECoreRes } from 'src/common/interfaces/request.interface';
 import { adminController } from '../../app/admin/admin.controller';
 import { AdminService } from '../../app/admin/admin.service';
 import { CreateAdminDto } from '../../app/admin/dto/signup.dto';

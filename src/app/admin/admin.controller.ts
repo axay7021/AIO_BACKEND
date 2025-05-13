@@ -135,7 +135,6 @@ export class adminController {
     @UploadedFile() profileImage: Express.Multer.File
   ): Promise<ECoreRes> {
     const user = req?.user as unknown as RequestUser;
-    console.log({ body, profileImage });
     const data = await this.adminService.editProfile(user, body, profileImage);
     return this.responseService.success(
       req,
@@ -175,5 +174,4 @@ export class adminController {
     const data = await this.adminService.refreshToken(req, body, Platform.EXTENSION);
     return this.responseService.success(req, res, 'TOKEN_REFRESHED', data, HttpStatus.SUCCESS);
   }
-
 }

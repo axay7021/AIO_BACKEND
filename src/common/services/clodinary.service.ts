@@ -31,7 +31,7 @@ export class CloudinaryService {
             this.deleteLocalFile(filePath); // Delete file after successful upload
             resolve(result);
           }
-        },
+        }
       );
     });
   }
@@ -55,7 +55,7 @@ export class CloudinaryService {
       if (err) {
         console.error(`Failed to delete local file: ${filePath}`, err);
       } else {
-        console.log(`Successfully deleted local file: ${filePath}`);
+        // console.log(`Successfully deleted local file: ${filePath}`);
       }
     });
   }
