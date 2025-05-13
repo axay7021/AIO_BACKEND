@@ -79,7 +79,7 @@ describe('AdminController', () => {
         jest.spyOn(adminService, 'createAdmin').mockRejectedValueOnce(
           new BadRequestException({
             message: 'EMAIL_ALREADY_EXISTS',
-          })
+          }),
         );
       }
 
@@ -87,7 +87,7 @@ describe('AdminController', () => {
       jest.spyOn(adminService, 'createAdmin').mockRejectedValueOnce(
         new BadRequestException({
           message: 'IP_BLOCKED_PERMANENTLY',
-        })
+        }),
       );
 
       // Mock success for attempt after block
@@ -100,7 +100,7 @@ describe('AdminController', () => {
         try {
           const result = await adminService.createAdmin(
             mockReq as ECoreReqAdmin,
-            mockCreateAdminDto
+            mockCreateAdminDto,
           );
           if (i === 11 && ipBlockMessageReceived) {
             // If we got the block message and this attempt succeeds, test passes
@@ -136,7 +136,7 @@ describe('AdminController', () => {
         jest.spyOn(adminService, 'createAdmin').mockRejectedValueOnce(
           new BadRequestException({
             message: 'EMAIL_ALREADY_EXISTS',
-          })
+          }),
         );
       }
 
@@ -144,7 +144,7 @@ describe('AdminController', () => {
       jest.spyOn(adminService, 'createAdmin').mockRejectedValueOnce(
         new BadRequestException({
           message: 'EMAIL_BLOCKED_PERMANENTLY',
-        })
+        }),
       );
 
       // Mock 7th attempt with success if block message was received
@@ -157,7 +157,7 @@ describe('AdminController', () => {
         try {
           const result = await adminService.createAdmin(
             mockReq as ECoreReqAdmin,
-            mockCreateAdminDto
+            mockCreateAdminDto,
           );
           if (i === 6 && blockMessageReceived) {
             // If we got the block message and this attempt succeeds, test passes
@@ -187,7 +187,7 @@ describe('AdminController', () => {
       await controller.createAdmin(
         mockReq as ECoreReqAdmin,
         mockRes as ECoreRes,
-        mockCreateAdminDto
+        mockCreateAdminDto,
       );
 
       expect(adminService.createAdmin).toHaveBeenCalledWith(mockReq, mockCreateAdminDto);
@@ -196,7 +196,7 @@ describe('AdminController', () => {
         mockRes,
         'ADMIN_CREATE_SUCCESS',
         mockSignupResponse,
-        201
+        201,
       );
     });
 
@@ -213,7 +213,7 @@ describe('AdminController', () => {
       await controller.createAdmin(
         mockReq as ECoreReqAdmin,
         mockRes as ECoreRes,
-        mockCreateAdminDto
+        mockCreateAdminDto,
       );
 
       // Verify the first call
@@ -223,19 +223,19 @@ describe('AdminController', () => {
         mockRes,
         'ADMIN_CREATE_SUCCESS',
         mockSignupResponse,
-        201
+        201,
       );
 
       // Mock the second call to signup (failure)
       jest.spyOn(adminService, 'createAdmin').mockRejectedValueOnce(
         new BadRequestException({
           message: 'EMAIL_ALREADY_EXISTS',
-        })
+        }),
       );
 
       // Second call: should fail with BadRequestException
       await expect(
-        controller.createAdmin(mockReq as ECoreReqAdmin, mockRes as ECoreRes, mockCreateAdminDto)
+        controller.createAdmin(mockReq as ECoreReqAdmin, mockRes as ECoreRes, mockCreateAdminDto),
       ).rejects.toThrow(BadRequestException);
 
       // Verify the second call
@@ -249,7 +249,7 @@ describe('AdminController', () => {
       jest.spyOn(adminService, 'createAdmin').mockRejectedValue(new Error('Unexpected Error'));
 
       await expect(
-        controller.createAdmin(mockReq as ECoreReqAdmin, mockRes as ECoreRes, mockCreateAdminDto)
+        controller.createAdmin(mockReq as ECoreReqAdmin, mockRes as ECoreRes, mockCreateAdminDto),
       ).rejects.toThrow(Error);
 
       expect(adminService.createAdmin).toHaveBeenCalledWith(mockReq, mockCreateAdminDto);

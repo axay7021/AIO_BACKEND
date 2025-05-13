@@ -5,7 +5,7 @@ import { Reflector } from '@nestjs/core';
 export class SubscriptionGuard implements CanActivate {
   constructor(
     private prismaService: PrismaService,
-    private reflector: Reflector
+    private reflector: Reflector,
   ) {}
 
   async canActivate(context: ExecutionContext): Promise<boolean> {

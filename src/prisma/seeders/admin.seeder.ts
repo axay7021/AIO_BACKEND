@@ -45,7 +45,7 @@ export class AdminSeeder implements Seeder {
     } catch (error) {
       console.error(
         'Error seeding admin:',
-        error instanceof Error ? error.message : 'Unknown error'
+        error instanceof Error ? error.message : 'Unknown error',
       );
       throw error;
     }

@@ -41,7 +41,7 @@ export class adminController {
   constructor(
     private readonly responseService: ResponseService,
     private readonly adminService: AdminService,
-    private readonly cloudinaryService: CloudinaryService
+    private readonly cloudinaryService: CloudinaryService,
   ) {}
 
   // signup  admin
@@ -50,7 +50,7 @@ export class adminController {
   async createAdmin(
     @Req() req: ECoreReqAdmin,
     @Res() res: ECoreRes,
-    @Body() body: CreateAdminDto
+    @Body() body: CreateAdminDto,
   ): Promise<ECoreRes> {
     const user = await this.adminService.createAdmin(req, body);
     return this.responseService.success(req, res, 'ADMIN_CREATE_SUCCESS', user, HttpStatus.CREATED);
@@ -61,7 +61,7 @@ export class adminController {
   async verifyOtp(
     @Req() req: ECoreReqHeader,
     @Res() res: ECoreRes,
-    @Body() body: VerifyOtpDto
+    @Body() body: VerifyOtpDto,
   ): Promise<ECoreRes> {
     const user = await this.adminService.verifyOtp(req, body);
     const { token, _statusCode } = user;
@@ -70,7 +70,7 @@ export class adminController {
       res,
       'OTP_VERIFIED_SUCCESSFULLY',
       { token },
-      _statusCode
+      _statusCode,
     );
   }
 
@@ -79,7 +79,7 @@ export class adminController {
   async resendOtp(
     @Req() req: ECoreReqHeader,
     @Res() res: ECoreRes,
-    @Body() body: ResendOtpDto
+    @Body() body: ResendOtpDto,
   ): Promise<ECoreRes> {
     await this.adminService.resendOtp(req, body);
     return this.responseService.success(
@@ -87,7 +87,7 @@ export class adminController {
       res,
       'OTP_RESENT_SUCCESSFULLY',
       {},
-      HttpStatus.SUCCESS
+      HttpStatus.SUCCESS,
     );
   }
 
@@ -104,7 +104,7 @@ export class adminController {
   async completeProfile(
     @Req() req: ECoreReqHeader,
     @Res() res: ECoreRes,
-    @Body() body: CompleteProfileDto
+    @Body() body: CompleteProfileDto,
   ): Promise<ECoreRes> {
     const userId = req.userId as string;
     await this.adminService.completeProfile(userId, body);
@@ -113,7 +113,7 @@ export class adminController {
       res,
       'PROFILE_UPDATED_SUCCESSFULLY',
       {},
-      HttpStatus.SUCCESS
+      HttpStatus.SUCCESS,
     );
   }
 
@@ -132,7 +132,7 @@ export class adminController {
     @Req() req: ECoreReqUser,
     @Res() res: ECoreRes,
     @Body() body: EditProfileDto,
-    @UploadedFile() profileImage: Express.Multer.File
+    @UploadedFile() profileImage: Express.Multer.File,
   ): Promise<ECoreRes> {
     const user = req?.user as unknown as RequestUser;
     const data = await this.adminService.editProfile(user, body, profileImage);
@@ -141,7 +141,7 @@ export class adminController {
       res,
       'PROFILE_UPDATED_SUCCESSFULLY',
       data,
-      HttpStatus.SUCCESS
+      HttpStatus.SUCCESS,
     );
   }
 
@@ -149,7 +149,7 @@ export class adminController {
   async refreshTokenCrm(
     @Req() req: ECoreReqHeader,
     @Res() res: ECoreRes,
-    @Body() body: RefreshTokenDto
+    @Body() body: RefreshTokenDto,
   ): Promise<ECoreRes> {
     const data = await this.adminService.refreshToken(req, body, Platform.WEBSITE);
     return this.responseService.success(req, res, 'TOKEN_REFRESHED', data, HttpStatus.SUCCESS);
@@ -159,7 +159,7 @@ export class adminController {
   async refreshTokenApp(
     @Req() req: ECoreReqHeader,
     @Res() res: ECoreRes,
-    @Body() body: RefreshTokenDto
+    @Body() body: RefreshTokenDto,
   ): Promise<ECoreRes> {
     const data = await this.adminService.refreshToken(req, body, Platform.APP);
     return this.responseService.success(req, res, 'TOKEN_REFRESHED', data, HttpStatus.SUCCESS);
@@ -169,7 +169,7 @@ export class adminController {
   async refreshTokenExtension(
     @Req() req: ECoreReqHeader,
     @Res() res: ECoreRes,
-    @Body() body: RefreshTokenDto
+    @Body() body: RefreshTokenDto,
   ): Promise<ECoreRes> {
     const data = await this.adminService.refreshToken(req, body, Platform.EXTENSION);
     return this.responseService.success(req, res, 'TOKEN_REFRESHED', data, HttpStatus.SUCCESS);

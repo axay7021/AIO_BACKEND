@@ -20,7 +20,7 @@ export class ResponseService {
     res: ECoreRes,
     msg: string,
     statusCode: number,
-    data?: object
+    data?: object,
   ): Promise<ECoreRes> {
     const headers: CustomHeaders = req.headers as ECoreReqHeader;
     const language: SupportedLanguages = headers.language ? headers.language : 'en'; //-
@@ -49,7 +49,7 @@ export class ResponseService {
     res: ECoreRes,
     msg: string,
     data: object,
-    statusCode: number
+    statusCode: number,
   ): Promise<ECoreRes> {
     try {
       const headers: CustomHeaders = req.headers as ECoreReqHeader;

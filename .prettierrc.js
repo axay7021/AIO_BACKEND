@@ -10,6 +10,7 @@ module.exports = {
   arrowParens: 'avoid',
   proseWrap: 'always',
   endOfLine: 'lf',
+  trailingComma: 'all',
   parameters: {
     multiline: {
       min: 3,

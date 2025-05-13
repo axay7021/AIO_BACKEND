@@ -42,12 +42,12 @@ export class AdminService {
     private readonly hashingService: HashingService,
     private readonly emailService: EmailService,
     private readonly jwtService: TokenUtils,
-    private readonly cloudinaryService: CloudinaryService
+    private readonly cloudinaryService: CloudinaryService,
   ) {
     this.googleClient = new OAuth2Client(
       process.env.GOOGLE_CLIENT_ID,
       process.env.GOOGLE_CLIENT_SECRET,
-      process.env.GOOGLE_CALLBACK_URL
+      process.env.GOOGLE_CALLBACK_URL,
     );
   }
 
@@ -80,7 +80,7 @@ export class AdminService {
           message: 'EMAIL_ALREADY_EXISTS',
           statusCode: 402,
         },
-        402
+        402,
       );
     }
     // Encrypt password
@@ -261,7 +261,7 @@ export class AdminService {
             token: await this.jwtService.generateToken(user.id),
           },
         },
-        HttpStatus.ACCEPTED
+        HttpStatus.ACCEPTED,
       );
     }
 
@@ -322,7 +322,7 @@ export class AdminService {
   async editProfile(
     user: RequestUser,
     body: EditProfileDto,
-    profileImage: Express.Multer.File
+    profileImage: Express.Multer.File,
   ): Promise<EditProfileResponse> {
     const { firstName, lastName } = body;
     const { userId } = user;
@@ -341,7 +341,7 @@ export class AdminService {
     if (profileImage) {
       const uploadedImage = await this.cloudinaryService.uploadImage(
         profileImage.path,
-        CLOUDINARY_FOLDERS.USER_PROFILE
+        CLOUDINARY_FOLDERS.USER_PROFILE,
       );
 
       if (profileImageKey) {
@@ -373,7 +373,7 @@ export class AdminService {
   async refreshToken(
     req: ECoreReq,
     body: RefreshTokenDto,
-    platform: Platform
+    platform: Platform,
   ): Promise<RefreshTokenResponse> {
     const { refreshToken } = body;
     const payload = await this.jwtService.verifyRefreshToken(refreshToken, platform);
@@ -435,7 +435,7 @@ export class AdminService {
       accessTokenExpiry,
       refreshTokenExpiry,
       accessTokenNonce,
-      refreshTokenNonce
+      refreshTokenNonce,
     );
 
     await this.prisma.admin.update({
@@ -586,7 +586,7 @@ export class AdminService {
               token: await this.jwtService.generateToken(user.id),
             },
           },
-          HttpStatus.ACCEPTED
+          HttpStatus.ACCEPTED,
         );
       }
 

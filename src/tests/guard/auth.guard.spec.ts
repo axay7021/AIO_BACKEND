@@ -155,7 +155,7 @@ describe('AuthGuard', () => {
 
       // Act & Assert
       await expect(guard.canActivate(mockContext)).rejects.toThrow(
-        new UnauthorizedException('TOKEN_REQUIRED')
+        new UnauthorizedException('TOKEN_REQUIRED'),
       );
     });
 
@@ -172,7 +172,7 @@ describe('AuthGuard', () => {
 
       // Act & Assert
       await expect(guard.canActivate(mockContext)).rejects.toThrow(
-        new UnauthorizedException('INVALID_PLATFORM')
+        new UnauthorizedException('INVALID_PLATFORM'),
       );
     });
 
@@ -190,7 +190,7 @@ describe('AuthGuard', () => {
 
       // Act & Assert
       await expect(guard.canActivate(mockContext)).rejects.toThrow(
-        new UnauthorizedException('USER_ACCOUNT_NOT_ACTIVE')
+        new UnauthorizedException('USER_ACCOUNT_NOT_ACTIVE'),
       );
     });
 
@@ -208,7 +208,7 @@ describe('AuthGuard', () => {
 
       // Act & Assert
       await expect(guard.canActivate(mockContext)).rejects.toThrow(
-        new UnauthorizedException('ACCESS_TOKEN_NONCE_MISMATCH')
+        new UnauthorizedException('ACCESS_TOKEN_NONCE_MISMATCH'),
       );
     });
   });

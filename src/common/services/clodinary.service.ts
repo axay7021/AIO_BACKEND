@@ -31,7 +31,7 @@ export class CloudinaryService {
             this.deleteLocalFile(filePath); // Delete file after successful upload
             resolve(result);
           }
-        }
+        },
       );
     });
   }

@@ -7,7 +7,7 @@ import { ECoreReq } from '@common/interfaces/request.interface';
 export class AuthGuard implements CanActivate {
   constructor(
     private jwtService: JwtService,
-    private prismaService: PrismaService
+    private prismaService: PrismaService,
   ) {}
 
   private getSecretByPlatform(platform: string): string {

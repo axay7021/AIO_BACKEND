@@ -15,7 +15,7 @@ interface ValidationErrorMessage {
 export class ValidationExceptionFilter implements ExceptionFilter {
   constructor(
     private readonly i18n: I18nService,
-    private readonly responseService: ResponseService
+    private readonly responseService: ResponseService,
   ) {}
 
   async catch(exception: HttpException, host: ArgumentsHost): Promise<ECoreRes> {
@@ -46,7 +46,7 @@ export class ValidationExceptionFilter implements ExceptionFilter {
         response,
         error instanceof Error ? error.message : 'Unknown error occurred',
         status,
-        data
+        data,
       );
     }
   }

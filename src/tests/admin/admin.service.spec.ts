@@ -239,7 +239,7 @@ describe('AdminService', () => {
       // Execute signup
       const result = await adminService.createAdmin(
         mockRequest as ECoreReqAdmin,
-        mockCreateAdminDto
+        mockCreateAdminDto,
       );
 
       // Verify email check
@@ -392,7 +392,7 @@ describe('AdminService', () => {
       await expect(adminService.verifyOtp(mockRequest as ECoreReq, mockVerifyOtp)).rejects.toThrow(
         new NotFoundException({
           message: 'INVALID_EMAIL_OR_PASSWORD',
-        })
+        }),
       );
 
       expect(ipBlockingGuard.trackFailedAttempt).toHaveBeenCalledWith(mockRequest.ip);
@@ -423,7 +423,7 @@ describe('AdminService', () => {
         new BadRequestException({
           message: 'INVALID_OTP',
           data: { email: mockVerifyOtp.email },
-        })
+        }),
       );
 
       expect(ipBlockingGuard.trackFailedAttempt).toHaveBeenCalledWith(mockRequest.ip);
@@ -456,7 +456,7 @@ describe('AdminService', () => {
         new BadRequestException({
           message: 'OTP_EXPIRED',
           data: { email: mockVerifyOtp.email },
-        })
+        }),
       );
     });
 
@@ -477,7 +477,7 @@ describe('AdminService', () => {
         new BadRequestException({
           message: 'INVALID_OTP',
           data: { email: mockVerifyOtp.email },
-        })
+        }),
       );
 
       expect(ipBlockingGuard.trackFailedAttempt).toHaveBeenCalledWith(mockRequest.ip);
@@ -546,7 +546,7 @@ describe('AdminService', () => {
         new BadRequestException({
           message: 'INVALID_EMAIL_OR_PASSWORD',
           data: { email: mockResendOtp.email },
-        })
+        }),
       );
 
       expect(ipBlockingGuard.trackFailedAttempt).toHaveBeenCalledWith(mockRequest.ip);
@@ -579,7 +579,7 @@ describe('AdminService', () => {
       await expect(adminService.resendOtp(mockRequest as ECoreReq, mockResendOtp)).rejects.toThrow(
         new BadRequestException({
           message: 'OTP_COOLDOWN_TIME',
-        })
+        }),
       );
 
       expect(ipBlockingGuard.trackFailedAttempt).toHaveBeenCalledWith(mockRequest.ip);
@@ -642,7 +642,7 @@ describe('AdminService', () => {
       await expect(adminService.verifyToken(userId)).rejects.toThrow(
         new NotFoundException({
           message: 'INVALID_EMAIL_OR_PASSWORD',
-        })
+        }),
       );
     });
 
@@ -675,8 +675,8 @@ describe('AdminService', () => {
           {
             message: 'INCOMPLETE_PROFILE',
           },
-          HttpStatus.ACCEPTED
-        )
+          HttpStatus.ACCEPTED,
+        ),
       );
     });
 
@@ -698,8 +698,8 @@ describe('AdminService', () => {
           {
             message: 'USER_NOT_ASSOCIATED_WITH_ANY_ORGANIZATION',
           },
-          203
-        )
+          203,
+        ),
       );
     });
 
@@ -732,8 +732,8 @@ describe('AdminService', () => {
             message: 'USER_PLAN_DEACTIVATED',
             statusCode: 400,
           },
-          400
-        )
+          400,
+        ),
       );
     });
   });
@@ -800,7 +800,7 @@ describe('AdminService', () => {
       await expect(adminService.completeProfile(userId, completeProfileDto)).rejects.toThrow(
         new NotFoundException({
           message: 'INVALID_EMAIL_OR_PASSWORD',
-        })
+        }),
       );
 
       expect(prismaService.user.findUnique).toHaveBeenCalledWith({
@@ -824,7 +824,7 @@ describe('AdminService', () => {
 
       // Act and asssert
       expect(adminService.getProfileDetail(user as unknown as RequestUser)).rejects.toThrow(
-        new UnauthorizedException('USER_NOT_FOUND')
+        new UnauthorizedException('USER_NOT_FOUND'),
       );
     });
   });
@@ -866,7 +866,7 @@ describe('AdminService', () => {
 
       // Act and assert
       expect(
-        adminService.editProfile(user as unknown as RequestUser, body, mockFile)
+        adminService.editProfile(user as unknown as RequestUser, body, mockFile),
       ).rejects.toThrow(new BadRequestException('USER_NOT_FOUND'));
     });
 
@@ -889,7 +889,7 @@ describe('AdminService', () => {
       const result = await adminService.editProfile(
         user as unknown as RequestUser,
         updateData,
-        null
+        null,
       );
 
       // Assert

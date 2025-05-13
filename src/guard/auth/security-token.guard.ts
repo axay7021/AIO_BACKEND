@@ -18,7 +18,7 @@ interface JwtPayload {
 export class SecurityTokenGuard implements CanActivate {
   constructor(
     private jwtService: JwtService,
-    private prisma: PrismaService
+    private prisma: PrismaService,
   ) {}
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
