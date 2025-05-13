@@ -4,7 +4,7 @@ module.exports = {
     {
       rules: {
         'ticket-number-rule': ({ subject }) => {
-          const pattern = /^FOL-\d+\s+.+$/;
+          const pattern = /^AIO-\d+\s+.+$/;
           return [
             pattern.test(subject),
             'Commit subject must contain FOL- followed by a number and description (e.g., "feat: FOL-12 add login system")',
