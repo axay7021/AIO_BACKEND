@@ -2,11 +2,11 @@ import { NestFactory } from '@nestjs/core';
 import { I18nService } from 'nestjs-i18n';
 
 import { AppModule } from './app.module';
-import { ValidationExceptionFilter } from './common/filters/validationException.filter';
-import { LoggingService } from './common/services/logger.service';
+import { ValidationExceptionFilter } from '@common/filters/validationException.filter';
+import { LoggingService } from '@common/services/logger.service';
 import { setupMiddleware } from './config/middleware.config';
 import { setupValidation } from './config/validation.config';
-import { ResponseService } from './common/services/response.service';
+import { ResponseService } from '@common/services/response.service';
 
 import type { NestExpressApplication } from '@nestjs/platform-express';
 
@@ -43,4 +43,11 @@ async function bootstrap(): Promise<void> {
   app.useGlobalFilters(new ValidationExceptionFilter(i18nService, responseService));
   await app.listen(process.env.PORT || 3000);
 }
-bootstrap();
+bootstrap()
+  .then(() => {
+    console.log('Server started on port', process.env.PORT || 3000);
+  })
+  .catch(err => {
+    console.error('Error starting server:', err);
+    process.exit(1);
+  });

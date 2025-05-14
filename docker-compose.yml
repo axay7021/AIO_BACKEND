@@ -33,6 +33,10 @@ services:
       - .env.development
     networks:
       - prisma-network
+    volumes:
+      - ./:/app
+      - /app/node_modules
+    command: sh -c "npx prisma migrate deploy && npx prisma generate && npm run start:dev"
 
   app-production:
     build:

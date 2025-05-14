@@ -1,7 +1,7 @@
 import { Module } from '@nestjs/common';
-import { ValidationExceptionFilter } from 'src/common/filters/validationException.filter';
-import { PrismaService } from 'src/common/services/prisma.service';
-import { ResponseService } from 'src/common/services/response.service';
+import { ValidationExceptionFilter } from '@common/filters/validationException.filter';
+import { PrismaService } from '@common/services/prisma.service';
+import { ResponseService } from '@common/services/response.service';
 import { adminController } from './admin.controller';
 import { AdminService } from './admin.service';
 import { HashingService } from 'src/common/services/hashing.service';
